@@ -1,3 +1,3 @@
-module github.com/daichi-m/to-go
+module github.com/daichi-m/togo
 
 go 1.13

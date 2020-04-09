@@ -1,35 +1,55 @@
-package main
+package togo
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
+	"io"
 	"log"
-	"os"
 	"reflect"
 )
 
-func main() {
-	fmt.Println("vim-go")
-	f, err := os.Open("sample.json")
-	if err != nil {
-		log.Fatal("Error in opening file", err)
-		os.Exit(1)
-	}
+func Decode(f io.Reader) (int, error) {
 	dec := json.NewDecoder(f)
-	var v interface{}
-	for dec.More() {
-		err = dec.Decode(&v)
-		if err != nil {
-			log.Print("Error in Decode call of Decoder", err)
-		}
-		switch reflect.ValueOf(v).Kind() {
-		case reflect.Slice:
-			fmt.Println("Slice!!")
-		case reflect.Map:
-			fmt.Println("Map!!")
-		}
-		t := reflect.TypeOf(v)
-		fmt.Println(t)
-		fmt.Println(v)
+	var value interface{}
+	err := dec.Decode(&value)
+	if err != nil {
+		log.Print("Could not decode due to", err)
+		return 0, err
 	}
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Slice:
+		sl, ok := value.([]interface{})
+		if !ok {
+			log.Println("Not a Slice")
+			return 0, errors.New("Not a Slice")
+		}
+		log.Printf("%T %v \n", sl, sl)
+		HandleSlice(sl)
+		return 1, nil
+	case reflect.Map:
+		mp, ok := value.(map[string]interface{})
+		if !ok {
+			log.Println("Not a Map")
+			return 0, errors.New("Not a Map")
+		}
+		log.Printf("%T %v \n", mp, mp)
+		HandleMap(mp)
+		return 2, nil
+	}
+	return 0, errors.New("Unknown type in reflect")
+}
+
+func HandleMap(m map[string]interface{}) error {
+	for k, v := range m {
+		log.Printf("%s -> %v.(%T)\n", k, v, v)
+	}
+	return nil
+}
+
+func HandleSlice(s []interface{}) error {
+	for i, v := range s {
+		log.Printf("%d -> %v.(%T)\n", i, v, v)
+	}
+	return nil
 }
