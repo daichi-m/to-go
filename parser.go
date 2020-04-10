@@ -1,43 +1,22 @@
 package togo
 
 import (
-	"encoding/json"
-	"errors"
-	"io"
 	"log"
-	"reflect"
 )
 
-func Decode(f io.Reader) (int, error) {
-	dec := json.NewDecoder(f)
-	var value interface{}
-	err := dec.Decode(&value)
+func Parse(dec Decoder) error {
+
+	data, err := dec.Decode()
 	if err != nil {
-		log.Print("Could not decode due to", err)
-		return 0, err
+		log.Println("Error while decoding data", err)
+		return err
 	}
-	v := reflect.ValueOf(value)
-	switch v.Kind() {
-	case reflect.Slice:
-		sl, ok := value.([]interface{})
-		if !ok {
-			log.Println("Not a Slice")
-			return 0, errors.New("Not a Slice")
-		}
-		log.Printf("%T %v \n", sl, sl)
-		HandleSlice(sl)
-		return 1, nil
-	case reflect.Map:
-		mp, ok := value.(map[string]interface{})
-		if !ok {
-			log.Println("Not a Map")
-			return 0, errors.New("Not a Map")
-		}
-		log.Printf("%T %v \n", mp, mp)
-		HandleMap(mp)
-		return 2, nil
+	if data.MapData != nil {
+		HandleMap(data.MapData)
+	} else {
+		HandleSlice(data.SliceData)
 	}
-	return 0, errors.New("Unknown type in reflect")
+	return nil
 }
 
 func HandleMap(m map[string]interface{}) error {
