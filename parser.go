@@ -1,13 +1,16 @@
 package togo
 
 import (
+	"errors"
 	"log"
 	"reflect"
 )
 
-func Parse(dec Decoder) error {
+var structCache map[string][]*GoStruct
 
-	data, err := dec.Decode()
+func Parse(da DecodeAnnotater) error {
+
+	data, err := da.Decode()
 	if err != nil {
 		log.Println("Error while decoding data", err)
 		return err
@@ -23,7 +26,15 @@ func Parse(dec Decoder) error {
 	return nil
 }
 
-func handleMap(m map[string]interface{}) (gs GoStruct, err error) {
+func cache(gs GoStruct) GoStruct {
+	key := gs.Key()
+	cached := structCache[key]
+	if cached == nil || len(cached) == 0 {
+
+	}
+}
+
+func handleMap(m map[string]interface{}) (GoStruct, error) {
 
 	var set bool
 	var gs GoStruct
@@ -75,8 +86,19 @@ func handleMap(m map[string]interface{}) (gs GoStruct, err error) {
 	return gs, nil
 }
 
-func handleSlice(s []interface{}) (gs GoStruct, err error) {
-	for i, v := range s {
-		log.Printf("%d -> %v.(%T)\n", i, v, v)
+func handleSlice(s []interface{}) (GoStruct, error) {
+	var gs GoStruct
+	for _, v := range s {
+		tp := reflect.ValueOf(v).Kind()
+		switch tp {
+		case reflect.Map:
+			mp := v.(map[string]interface{})
+			return handleMap(mp)
+		case reflect.Slice:
+			sl := v.([]interface{})
+			return handleSlice(sl)
+		default:
+		}
 	}
+	return gs, errors.New("The Slice contains non-map, non-slice data. Slice must contain map or slice")
 }
