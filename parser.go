@@ -15,26 +15,21 @@ func Parse(da DecodeAnnotater) error {
 		log.Println("Error while decoding data", err)
 		return err
 	}
-	mp, err := data.ToMap()
-	if err == nil {
-		handleMap(mp)
+	var gs GoStruct
+	if data.mapData != nil {
+		mp := data.mapData
+		gs, err = handleMap("Document", mp, 0)
+	} else if data.sliceData != nil {
+		sl := data.sliceData
+		gs, err = handleSlice("Document", sl, 0)
 	}
-	sl, err := data.ToSlice()
-	if err == nil {
-		handleSlice(sl)
-	}
+	log.Printf("%+v %v \n", gs, err)
+	str := gs.ToStruct()
+	log.Printf(str)
 	return nil
 }
 
-func cache(gs GoStruct) GoStruct {
-	key := gs.Key()
-	cached := structCache[key]
-	if cached == nil || len(cached) == 0 {
-
-	}
-}
-
-func handleMap(m map[string]interface{}) (GoStruct, error) {
+func handleMap(name string, m map[string]interface{}, lvl int) (GoStruct, error) {
 
 	var set bool
 	var gs GoStruct
@@ -68,36 +63,41 @@ func handleMap(m map[string]interface{}) (GoStruct, error) {
 			switch tp {
 			case reflect.Slice:
 				sl := v.([]interface{})
-				mgs, err := handleSlice(sl)
+				mgs, err := handleSlice(k, sl, lvl+1)
 				if err != nil {
 					return gs, err
 				}
+				log.Printf("%+v \n", mgs)
 			case reflect.Map:
 				mp := v.(map[string]interface{})
-				sgs, err := handleMap(mp)
+				sgs, err := handleMap(k, mp, lvl+1)
 				if err != nil {
 					return gs, err
 				}
+				log.Printf("%+v \n", sgs)
 			}
 		}
 		fields = append(fields, *fld)
 	}
 	gs.Fields = fields
+	gs.Name = name
+	gs.Level = lvl
 	return gs, nil
 }
 
-func handleSlice(s []interface{}) (GoStruct, error) {
+func handleSlice(name string, s []interface{}, lvl int) (GoStruct, error) {
 	var gs GoStruct
 	for _, v := range s {
 		tp := reflect.ValueOf(v).Kind()
 		switch tp {
 		case reflect.Map:
 			mp := v.(map[string]interface{})
-			return handleMap(mp)
+			return handleMap(name, mp, lvl)
 		case reflect.Slice:
 			sl := v.([]interface{})
-			return handleSlice(sl)
+			return handleSlice(name, sl, lvl)
 		default:
+			log.Printf("Unknown type of slice")
 		}
 	}
 	return gs, errors.New("The Slice contains non-map, non-slice data. Slice must contain map or slice")

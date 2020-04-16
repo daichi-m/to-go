@@ -1,58 +1,51 @@
 package togo
 
 import (
-	"crypto/sha1"
 	"errors"
 	"fmt"
+	"strings"
 )
-
-// Interface that defines a Key method to ensure quick comparison
-type Keyed interface {
-	Key() string
-}
 
 // The struct that donates a go field inside the go struct that will be generated.
 // It has a Name, a Type and optionally an Annotation to user for (un)marshalling
 type Field struct {
-	Name, Annotation string
-	Type             FieldType
-	HashKey          string
-}
-
-func (f *Field) Key() string {
-	if len(f.HashKey) != 0 {
-		return f.HashKey
-	}
-
-	s := fmt.Sprintf("%s:%d:%s", f.Name, f.Type, f.Annotation)
-	sum := sha1.Sum([]byte(s))
-	f.HashKey = string(sum[:])
-	return f.HashKey
+	Name, Annotation, TypeString string
+	Type                         FieldType
 }
 
 // The representation of a go struct. It has a name, a set of Field types and a Level
 // to determine at what level should the struct be defined in the final source code.
 type GoStruct struct {
-	Name    string
-	Fields  []Field
-	Level   int
-	HashKey string
+	Name   string
+	Fields []Field
+	Level  int
 }
 
-func (gs *GoStruct) Key() string {
-	if len(gs.HashKey) != 0 {
-		return gs.HashKey
+func (gs GoStruct) ToStruct() string {
+	var buf []string
+	buf = append(buf, fmt.Sprintf("type %s struct {", gs.Name))
+	for _, fld := range gs.Fields {
+		var tp string
+		switch fld.Type {
+		case Int:
+			tp = "int"
+		case BigInt:
+			tp = "int64"
+		case Float32:
+			tp = "float32"
+		case Float64:
+			tp = "float64"
+		case String:
+			tp = "string"
+		case Slice:
+			tp = fmt.Sprintf("[]%s", fld.TypeString)
+		case Map:
+			tp = fld.TypeString
+		}
+		buf = append(buf, fmt.Sprintf("%s %s", fld.Name, tp))
 	}
-
-	sl := make([]string, len(gs.Fields))
-	for _, f := range gs.Fields {
-		fk := f.Key()
-		sl = append(sl, fk)
-	}
-	s := fmt.Sprintf("%s:%d:%v", gs.Name, gs.Level, sl)
-	sum := sha1.Sum([]byte(s))
-	gs.HashKey = string(sum[:])
-	return gs.HashKey
+	buf = append(buf, "}")
+	return strings.Join(buf, "\n")
 }
 
 // Represents the FieldType in a GoStruct, an alias over int

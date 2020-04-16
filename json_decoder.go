@@ -41,3 +41,7 @@ func (j *Json) Decode() (DecData, error) {
 	}
 	return *dd, nil
 }
+
+func (j *Json) Annotate(string) string {
+	return ""
+}
