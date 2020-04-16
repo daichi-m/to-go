@@ -6,6 +6,6 @@ import (
 
 func main() {
 	js := new(togo.Json)
-	js.File = "../samples/sample-slice.json"
+	js.File = "../samples/sample-map.json"
 	togo.Parse(js)
 }
