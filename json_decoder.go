@@ -12,9 +12,9 @@ type Json struct {
 	File string
 }
 
-func (j *Json) Decode() (DecData, error) {
+func (j *Json) Decode() (decodedData, error) {
 
-	dd := new(DecData)
+	dd := new(decodedData)
 	f, err := os.Open(j.File)
 	if err != nil {
 		log.Println("Error while reading file", err)
@@ -31,10 +31,10 @@ func (j *Json) Decode() (DecData, error) {
 	switch tp.Kind() {
 	case reflect.Map:
 		mp := val.(map[string]interface{})
-		dd.OfMap(mp)
+		dd.Map(mp)
 	case reflect.Slice:
 		sl := val.([]interface{})
-		dd.OfSlice(sl)
+		dd.Slice(sl)
 	default:
 		log.Println("Unknown type to decode", tp.Kind())
 		return *dd, errors.New("Unknown type to decode")
