@@ -7,6 +7,7 @@ type field struct {
 	annotation  string
 	fldType     fieldType
 	fldTypeName string
+	nesting     int
 }
 
 // The representation of a go struct. It has a name, a set of Field types and a Level
@@ -22,6 +23,7 @@ type fieldType uint
 
 const (
 	Int = iota
+	Bool
 	BigInt
 	Float32
 	Float64

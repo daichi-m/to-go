@@ -8,6 +8,12 @@ import (
 
 var levelOrder map[int]goStruct
 
+type tracker struct {
+	name    string
+	level   int
+	nesting int
+}
+
 func Parse(dec Decoder) error {
 
 	data, err := dec.Decode()
@@ -15,16 +21,23 @@ func Parse(dec Decoder) error {
 		log.Println("Error while decoding data", err)
 		return err
 	}
-	var gs goStruct
+	var gs *goStruct
+
+	tr := tracker{
+		name:    "Document",
+		level:   0,
+		nesting: 0,
+	}
+
 	if data.mapData != nil {
 		mp := data.mapData
-		gs, err = handleMap("Document", mp, 0)
+		gs, err = handleMap(mp, tr)
 		if err != nil {
 			log.Fatal("Error while handling interface", err)
 		}
 	} else if data.sliceData != nil {
 		sl := data.sliceData
-		gs, err = handleSlice("Document", sl, 0)
+		gs, err = handleSlice(sl, tr)
 		if err != nil {
 			log.Fatal("Error while handling interface", err)
 		}
@@ -35,65 +48,92 @@ func Parse(dec Decoder) error {
 	return nil
 }
 
-func handleMap(name string, m map[string]interface{}, lvl int) (goStruct, error) {
+func handleMap(src map[string]interface{}, tr tracker) (*goStruct, error) {
 
-	var set bool
-	var gs goStruct
-	var fields []field
-	for k, v := range m {
-		set = false
+	gs := new(goStruct)
+	gs.name = tr.name
+
+	var child *goStruct
+	//var err error
+
+	for key, val := range src {
+		prmtv := false
 		fld := new(field)
-		fld.name = k
-		switch v.(type) {
-		case byte, int8, int16, int32, int:
-			fld.fldType = Int
-			set = true
-		case int64:
-			fld.fldType = BigInt
-			set = true
-		case string:
-			fld.fldType = String
-			set = true
-		case float32:
-			fld.fldType = Float32
-			set = true
-		case float64:
-			fld.fldType = Float64
-			set = true
+
+		tp := reflect.ValueOf(val).Kind()
+		switch tp {
+		case reflect.Slice:
+			prmtv = false
+			sl := val.([]interface{})
+			ctr := tracker{
+				name:    key,
+				level:   tr.level + 1,
+				nesting: tr.nesting + 1,
+			}
+			child, _ = handleSlice(sl, ctr)
+
+			fld.fldType = Slice
+			fld.fldTypeName = child.name
+			fld.name = key
+			fld.annotation = ""
+			fld.nesting = tr.nesting
+		case reflect.Map:
+			prmtv = false
+			mp := val.(map[string]interface{})
+			ctr := tracker{
+				name:    key,
+				level:   tr.level + 1,
+				nesting: 0,
+			}
+			child, _ = handleMap(mp, ctr)
+
+			fld.fldType = Map
+			fld.fldTypeName = child.name
+			fld.name = key
+			fld.annotation = ""
+			fld.nesting = 0
 		default:
-			set = false
+			prmtv = true
+
 		}
 
-		if !set {
-			tp := reflect.ValueOf(v).Kind()
-			switch tp {
-			case reflect.Slice:
-				sl := v.([]interface{})
-				mgs, err := handleSlice(k, sl, lvl+1)
-				if err != nil {
-					return gs, err
-				}
-				log.Printf("%+v \n", mgs)
-			case reflect.Map:
-				mp := v.(map[string]interface{})
-				sgs, err := handleMap(k, mp, lvl+1)
-				if err != nil {
-					return gs, err
-				}
-				log.Printf("%+v \n", sgs)
+		if prmtv {
+			fld, err := primitiveField(key, val)
+			if err != nil {
+				log.Fatal("Failed to convert primitive type", err)
 			}
+			gs.fields = append(gs.fields, *fld)
 		}
-		fields = append(fields, *fld)
 	}
-	gs.fields = fields
-	gs.name = name
-	gs.strLevel = lvl
 	return gs, nil
 }
 
-func handleSlice(name string, s []interface{}, lvl int) (goStruct, error) {
+func primitiveField(key string, val interface{}) (*field, error) {
+
+	fld := new(field)
+	fld.name = key
+	switch val.(type) {
+	case bool:
+		fld.fldType = Bool
+	case int, uint, int8, uint8, int16, uint16, int32, uint32:
+		fld.fldType = Int
+	case int64, uint64:
+		fld.fldType = BigInt
+	case float32:
+		fld.fldType = Float32
+	case float64:
+		fld.fldType = Float64
+	case string:
+		fld.fldType = String
+	default:
+		return nil, errors.New("Non primitive type")
+	}
+	return fld, nil
+}
+
+func handleSlice(src []interface{}, tr tracker) (*goStruct, error) {
 	var gs goStruct
-	for _, v := range s {
+	for _, v := range src {
 		tp := reflect.ValueOf(v).Kind()
 		switch tp {
 		case reflect.Map:
