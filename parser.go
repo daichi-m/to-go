@@ -108,6 +108,31 @@ func handleMap(src map[string]interface{}, tr tracker) (*goStruct, error) {
 	return gs, nil
 }
 
+func handleSlice(src []interface{}, tr tracker) (*goStruct, error) {
+	gs := new(goStruct)
+	for _, v := range src {
+		tp := reflect.ValueOf(v).Kind()
+		switch tp {
+		case reflect.Map:
+			mp := v.(map[string]interface{})
+			ctr := tracker{
+				name:    tr.name,
+				level:   tr.level,
+				nesting: 0,
+			}
+			handleMap(mp, ctr)
+		case reflect.Slice:
+			sl := v.([]interface{})
+			ctr := tracker{
+				name:    tr.name,
+				level:   tr.level,
+				nesting: tr.nesting + 1,
+			}
+			handleSlice(sl, ctr)
+		}
+	}
+}
+
 func primitiveField(key string, val interface{}) (*field, error) {
 
 	fld := new(field)
