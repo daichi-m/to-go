@@ -5,26 +5,28 @@ import (
 	"strings"
 )
 
-func (gs goStruct) ToStruct() string {
+func (gs GoStruct) ToStruct() string {
 	var buf []string
-	buf = append(buf, fmt.Sprintf("type %s struct {", gs.name))
-	for _, fld := range gs.fields {
+	buf = append(buf, fmt.Sprintf("type %s struct {", gs.Name))
+	for _, fld := range gs.Fields {
 		var tp string
-		switch fld.fldType {
+
+		switch fld.dataType {
+		case Bool:
+			tp = "bool"
 		case Int:
 			tp = "int"
-		case BigInt:
+		case Int64:
 			tp = "int64"
-		case Float32:
-			tp = "float32"
 		case Float64:
 			tp = "float64"
 		case String:
 			tp = "string"
 		case Slice:
-			tp = fmt.Sprintf("[]%s", fld.fldTypeName)
+			nest := strings.Repeat("[]", fld.sliceNesting)
+			tp = fmt.Sprintf("%s%s", nest, fld.dtStruct)
 		case Map:
-			tp = fld.fldTypeName
+			tp = fld.dtStruct
 		}
 		buf = append(buf, fmt.Sprintf("%s %s", fld.name, tp))
 	}

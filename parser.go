@@ -2,11 +2,11 @@ package togo
 
 import (
 	"errors"
+	"fmt"
 	"log"
-	"reflect"
-)
 
-var levelOrder map[int]goStruct
+	"go.uber.org/zap"
+)
 
 type tracker struct {
 	name    string
@@ -14,162 +14,228 @@ type tracker struct {
 	nesting int
 }
 
+func (t tracker) clone() tracker {
+	tn := tracker{
+		name:    t.name,
+		level:   t.level,
+		nesting: t.nesting,
+	}
+	return tn
+}
+
+var LevelOrderCache map[int][]*GoStruct
+var NameStructCache map[string]*GoStruct
+var trackerCache map[string]*tracker
+var Logger *zap.Logger
+
+func setLogger() error {
+
+	Logger, err := zap.NewDevelopment()
+	if err != nil {
+		return err
+	}
+	defer Logger.Sync()
+	return nil
+}
+
 func Parse(dec Decoder) error {
+
+	if Logger == nil {
+		setLogger()
+	}
+	defer Logger.Sync()
+	LevelOrderCache = make(map[int][]*GoStruct)
+	NameStructCache = make(map[string]*GoStruct)
+	trackerCache = make(map[string]*tracker)
 
 	data, err := dec.Decode()
 	if err != nil {
-		log.Println("Error while decoding data", err)
+		log.Fatalf("Error while decoding data: %+v\n", err)
 		return err
 	}
-	var gs *goStruct
+	var gs *GoStruct
+
+	log.Printf("Decoded data from JSON: %+v\n", data)
 
 	tr := tracker{
 		name:    "Document",
 		level:   0,
 		nesting: 0,
 	}
+	var nest int
 
 	if data.mapData != nil {
 		mp := data.mapData
-		gs, err = handleMap(mp, tr)
+		gs, err = HandleMap(mp, tr)
 		if err != nil {
-			log.Fatal("Error while handling interface", err)
+			log.Fatalf("Error while handling interface: %+v\n", err)
 		}
 	} else if data.sliceData != nil {
 		sl := data.sliceData
-		gs, err = handleSlice(sl, tr)
+		gs, nest, err = HandleSlice(sl, tr)
 		if err != nil {
-			log.Fatal("Error while handling interface", err)
+			log.Fatalf("Error while handling interface: %v+\n", err)
 		}
 	}
-	log.Printf("%+v %v \n", gs, err)
+	log.Printf("%+v %v %+v \n", gs, nest, err)
 	str := gs.ToStruct()
 	log.Printf(str)
+
+	for name, gos := range NameStructCache {
+		log.Printf("Name: %+v, Struct: %+v\n", name, gos.ToStruct())
+	}
 	return nil
 }
 
-func handleMap(src map[string]interface{}, tr tracker) (*goStruct, error) {
+func HandleMap(src map[string]interface{}, tr tracker) (*GoStruct, error) {
+	log.Printf("Tracking map element: %+v \n", tr)
+	trackerCache[tr.name] = &tr
 
-	gs := new(goStruct)
-	gs.name = tr.name
+	gs := new(GoStruct)
+	gs.Name = tr.name
+	gs.Level = tr.level
 
-	var child *goStruct
-	//var err error
-
+	log.Printf("Iterate and fill up fields on GoStruct %+v\n", gs.Name)
 	for key, val := range src {
-		prmtv := false
-		fld := new(field)
-
-		tp := reflect.ValueOf(val).Kind()
-		switch tp {
-		case reflect.Slice:
-			prmtv = false
-			sl := val.([]interface{})
-			ctr := tracker{
-				name:    key,
-				level:   tr.level + 1,
-				nesting: tr.nesting + 1,
-			}
-			child, _ = handleSlice(sl, ctr)
-
-			fld.fldType = Slice
-			fld.fldTypeName = child.name
-			fld.name = key
-			fld.annotation = ""
-			fld.nesting = tr.nesting
-		case reflect.Map:
-			prmtv = false
+		field, err := toField(key, val)
+		if err != nil {
+			log.Fatalf("Error while converting to Field: %+v\n", err)
+		}
+		prmtv := field.dataType.primitive()
+		if prmtv == true {
+			log.Printf("Primitive value, setting dtStruct and sliceNesting to defaults\n")
+			field.dtStruct = ""
+			field.sliceNesting = -1
+			gs.AddField(field)
+			log.Printf("Added field: %+v to the gostruct\n", field)
+		} else if field.dataType == Map {
+			log.Printf("Found a map inside a map. Key: %s \n", key)
 			mp := val.(map[string]interface{})
 			ctr := tracker{
 				name:    key,
+				nesting: -1,
 				level:   tr.level + 1,
-				nesting: 0,
 			}
-			child, _ = handleMap(mp, ctr)
-
-			fld.fldType = Map
-			fld.fldTypeName = child.name
-			fld.name = key
-			fld.annotation = ""
-			fld.nesting = 0
-		default:
-			prmtv = true
-
-		}
-
-		if prmtv {
-			fld, err := primitiveField(key, val)
+			cgs, err := HandleMap(mp, ctr)
 			if err != nil {
-				log.Fatal("Failed to convert primitive type", err)
+				log.Printf("Failed converting map to GoStruct due to %+v \n", err)
+				return nil, err
 			}
-			gs.fields = append(gs.fields, *fld)
+			field.dtStruct = cgs.Name
+			field.sliceNesting = -1
+			gs.AddField(field)
+		} else if field.dataType == Slice {
+			log.Printf("Found a slice inside a map. Key: %+v \n", key)
+			sl := val.([]interface{})
+			ctr := tracker{
+				name:    key,
+				nesting: 1,
+				level:   tr.level,
+			}
+			cgs, nest, err := HandleSlice(sl, ctr)
+			if err != nil {
+				log.Printf("Failed converting slice to GoStruct due to %+v \n", err)
+				return nil, err
+			}
+			field.dtStruct = cgs.Name
+			field.sliceNesting = nest
+			gs.AddField(field)
+		} else {
+			msg := fmt.Sprintf("Unknown data type found: %+v", field.dataType)
+			log.Println(msg)
+			return nil, errors.New(msg)
 		}
 	}
+	err := Cache(gs)
+	if err != nil {
+		log.Printf("Error while caching: %+v\n", err)
+		return nil, err
+	}
+	log.Printf("Map tracker element: %+v produced result %+v \n", tr, gs)
 	return gs, nil
 }
 
-func handleSlice(src []interface{}, tr tracker) (*goStruct, error) {
-	gs := new(goStruct)
-	for _, v := range src {
-		tp := reflect.ValueOf(v).Kind()
-		switch tp {
-		case reflect.Map:
-			mp := v.(map[string]interface{})
-			ctr := tracker{
-				name:    tr.name,
-				level:   tr.level,
-				nesting: 0,
-			}
-			handleMap(mp, ctr)
-		case reflect.Slice:
-			sl := v.([]interface{})
+func HandleSlice(src []interface{}, tr tracker) (*GoStruct, int, error) {
+	log.Printf("Tracker for slice: %+v \n", tr)
+	trackerCache[tr.name] = &tr
+
+	name := tr.name
+	var dt0 FieldDT
+	gs := new(GoStruct)
+	var chgs *GoStruct
+
+	for idx, val := range src {
+		field, err := toField(name, val)
+		if err != nil {
+			log.Printf("Error while converting val to field: %+v\n", err)
+			return nil, 0, err
+		}
+		if idx == 0 {
+			dt0 = field.dataType
+		} else if field.dataType != dt0 {
+			log.Printf("Different data-types found inside a list. Expected: %+v, Found: %+v\n",
+				dt0, field.dataType)
+			return nil, 0, errors.New("Slice not feasible. Found different data-types")
+		}
+
+		prmtv := field.dataType.primitive()
+		if prmtv {
+			field.dtStruct = ""
+			field.sliceNesting = tr.nesting
+		} else if field.dataType == Slice {
 			ctr := tracker{
 				name:    tr.name,
 				level:   tr.level,
 				nesting: tr.nesting + 1,
 			}
-			handleSlice(sl, ctr)
+			sl := val.([]interface{})
+			chgs, _, err = HandleSlice(sl, ctr)
+			if err != nil {
+				log.Printf("Could not convert the slice to GoStruct: %+v\n", err)
+				return nil, 0, err
+			}
+		} else if field.dataType == Map {
+			ctr := tracker{
+				name:    tr.name,
+				level:   tr.level,
+				nesting: -1,
+			}
+			mp := val.(map[string]interface{})
+			chgs, err = HandleMap(mp, ctr)
+		}
+		if gs == nil || gs.IsEmpty() {
+			gs = chgs
+		} else {
+			err = gs.Grow(chgs)
+			if err != nil {
+				log.Printf("Cannot group the existing GoStruct due to %+v \n", err)
+				return nil, 0, err
+			}
 		}
 	}
+	log.Printf("Slice tracker element: %+v produced result %+v with nesting %d \n",
+		tr, gs, tr.nesting)
+	return gs, tr.nesting, nil
 }
 
-func primitiveField(key string, val interface{}) (*field, error) {
-
-	fld := new(field)
-	fld.name = key
-	switch val.(type) {
-	case bool:
-		fld.fldType = Bool
-	case int, uint, int8, uint8, int16, uint16, int32, uint32:
-		fld.fldType = Int
-	case int64, uint64:
-		fld.fldType = BigInt
-	case float32:
-		fld.fldType = Float32
-	case float64:
-		fld.fldType = Float64
-	case string:
-		fld.fldType = String
-	default:
-		return nil, errors.New("Non primitive type")
+// Cache the GoStruct into level order cache and name cache
+func Cache(gs *GoStruct) error {
+	gsl, ok := LevelOrderCache[gs.Level]
+	if !ok {
+		gsl = make([]*GoStruct, 8)
 	}
-	return fld, nil
-}
+	gsl = append(gsl, gs)
+	LevelOrderCache[gs.Level] = gsl
 
-func handleSlice(src []interface{}, tr tracker) (*goStruct, error) {
-	var gs goStruct
-	for _, v := range src {
-		tp := reflect.ValueOf(v).Kind()
-		switch tp {
-		case reflect.Map:
-			mp := v.(map[string]interface{})
-			return handleMap(name, mp, lvl)
-		case reflect.Slice:
-			sl := v.([]interface{})
-			return handleSlice(name, sl, lvl)
-		default:
-			log.Printf("Unknown type of slice")
-		}
+	gsn, ok := NameStructCache[gs.Name]
+	if !ok {
+		NameStructCache[gs.Name] = gs
+		return nil
 	}
-	return gs, errors.New("The Slice contains non-map, non-slice data. Slice must contain map or slice")
+	eq := gs.Equals(gsn)
+	if !eq {
+		log.Printf("Found a GoStruct with same name, but the structs are not equal")
+		return errors.New("Found a different GoStruct with same name")
+	}
+	return nil
 }
