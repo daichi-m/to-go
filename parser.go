@@ -4,16 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"log"
-
-	"go.uber.org/zap"
 )
 
+// A tracker interface to track the progression tree while converting to
+// go struct from the generic object
 type tracker struct {
 	name    string
 	level   int
 	nesting int
 }
 
+// Clone a give tracker and return a new instance of tracker
 func (t tracker) clone() tracker {
 	tn := tracker{
 		name:    t.name,
@@ -23,11 +24,14 @@ func (t tracker) clone() tracker {
 	return tn
 }
 
+/*
 var LevelOrderCache map[int][]*GoStruct
 var NameStructCache map[string]*GoStruct
 var trackerCache map[string]*tracker
 var Logger *zap.Logger
+*/
 
+/*
 func setLogger() error {
 
 	Logger, err := zap.NewDevelopment()
@@ -36,17 +40,19 @@ func setLogger() error {
 	}
 	defer Logger.Sync()
 	return nil
-}
+}*/
 
+// Parse this instance of Decoder into a GoStruct.
+// Returns an error in case of any error that occurs
 func Parse(dec Decoder) error {
 
-	if Logger == nil {
-		setLogger()
-	}
-	defer Logger.Sync()
-	LevelOrderCache = make(map[int][]*GoStruct)
-	NameStructCache = make(map[string]*GoStruct)
-	trackerCache = make(map[string]*tracker)
+	// if Logger == nil {
+	// 	setLogger()
+	// }
+	// defer Logger.Sync()
+	// LevelOrderCache = make(map[int][]*GoStruct)
+	// NameStructCache = make(map[string]*GoStruct)
+	// trackerCache = make(map[string]*tracker)
 
 	data, err := dec.Decode()
 	if err != nil {
@@ -87,6 +93,8 @@ func Parse(dec Decoder) error {
 	return nil
 }
 
+// HandleMap takes care of converting a map[string]interface{}
+// into a GoStruct
 func HandleMap(src map[string]interface{}, tr tracker) (*GoStruct, error) {
 	log.Printf("Tracking map element: %+v \n", tr)
 	trackerCache[tr.name] = &tr
@@ -155,6 +163,8 @@ func HandleMap(src map[string]interface{}, tr tracker) (*GoStruct, error) {
 	return gs, nil
 }
 
+// HandleSlice takes care of converting a slice of interface{}
+// into an instance of GoStruct
 func HandleSlice(src []interface{}, tr tracker) (*GoStruct, int, error) {
 	log.Printf("Tracker for slice: %+v \n", tr)
 	trackerCache[tr.name] = &tr
