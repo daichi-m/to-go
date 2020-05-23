@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-// The field data type represented as an uint for convenience purpose
+// FieldDT is an alias for the field data type represented
+// as an uint for convenience purpose
 type FieldDT uint
 
 // Constant describing the different the field data type supported currently.
@@ -80,8 +81,9 @@ func toFieldDT(k reflect.Kind) (FieldDT, bool) {
 	}
 }
 
-// The struct that donates a go Field inside the go struct that will be generated.
-// It has a Name, a Type and optionally an Annotation to user for (un)marshalling
+// Field is the struct that donates a go Field inside the go struct that will
+// be generated. It has a Name, a Type and optionally an
+// Annotation to user for (un)marshalling
 type Field struct {
 	name         string
 	annotation   string
@@ -90,7 +92,8 @@ type Field struct {
 	sliceNesting int
 }
 
-// Check if this instance of field is "in-essence" equal to other instance
+// Equals check if this instance of field is "in-principle"
+// equal to other instance
 func (f *Field) Equals(of *Field) bool {
 	if f.name != of.name {
 		return false
@@ -134,15 +137,16 @@ func toField(name string, val interface{}) (*Field, error) {
 	return f, nil
 }
 
-// The representation of a go struct. It has a name, a set of Field types and a Level
-// to determine at what level should the struct be defined in the final source code.
+// GoStruct is the representation of a go struct. It has a name,
+// a set of Field types and a Level to determine at what level should the
+// struct be defined in the final source code.
 type GoStruct struct {
 	Name   string
 	Fields map[string]*Field
 	Level  int
 }
 
-// Adds a field to the GoStruct instance
+// AddField adds a field to the GoStruct instance
 func (gs *GoStruct) AddField(f *Field) error {
 	if f == nil {
 		return errors.New("Trying to add a nil field")
@@ -158,7 +162,8 @@ func (gs *GoStruct) AddField(f *Field) error {
 	}
 
 	if !exFld.Equals(f) {
-		return errors.New(fmt.Sprintf("Unmatched fields. Already %v, received: %v", exFld, f))
+		return fmt.Errorf(
+			"Unmatched fields. Already %v, received: %v", exFld, f)
 	}
 	f.annotate(exFld.annotation)
 	gs.Fields[f.name] = f
@@ -166,16 +171,17 @@ func (gs *GoStruct) AddField(f *Field) error {
 	return nil
 }
 
-// Check if two GoStruct instances are equal. Equality of GoStructs depends solely on name.
+// Equals check if two GoStruct instances are equal.
+// Equality of GoStructs depends solely on name.
 // Fields can get added and deleted, so field equality is not checked
 func (gs *GoStruct) Equals(other *GoStruct) bool {
 	if gs.Name == other.Name {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
+// Grow a struct with additional fields from the other GoStruct instance
 func (gs *GoStruct) Grow(other *GoStruct) error {
 	if eq := gs.Equals(other); !eq {
 		log.Printf("Structs %+v and %+v are not equal, cannot grow", gs, other)
@@ -195,10 +201,11 @@ func (gs *GoStruct) Grow(other *GoStruct) error {
 	return nil
 }
 
+// IsEmpty checks if this GoStruct is empty
+// (i.e., this instance does not have a name)
 func (gs *GoStruct) IsEmpty() bool {
 	if len(gs.Name) == 0 {
 		return true
-	} else {
-		return false
 	}
+	return false
 }

@@ -8,13 +8,15 @@ import (
 	"reflect"
 )
 
-type Json struct {
+// JSON type structure to convert to go struct
+type JSON struct {
 	File string
 }
 
-func (j *Json) Decode() (decodedData, error) {
+// Decode this Json instance into decodedData
+func (j *JSON) Decode() (DecodedData, error) {
 
-	dd := new(decodedData)
+	dd := new(DecodedData)
 	f, err := os.Open(j.File)
 	if err != nil {
 		log.Println("Error while reading file", err)
@@ -31,10 +33,10 @@ func (j *Json) Decode() (decodedData, error) {
 	switch tp.Kind() {
 	case reflect.Map:
 		mp := val.(map[string]interface{})
-		dd.Map(mp)
+		dd.mapData = mp
 	case reflect.Slice:
 		sl := val.([]interface{})
-		dd.Slice(sl)
+		dd.sliceData = sl
 	default:
 		log.Println("Unknown type to decode", tp.Kind())
 		return *dd, errors.New("Unknown type to decode")
@@ -42,6 +44,7 @@ func (j *Json) Decode() (decodedData, error) {
 	return *dd, nil
 }
 
-func (j *Json) Annotate(string) string {
+// Annotate a string with
+func (j *JSON) Annotate(string) string {
 	return ""
 }

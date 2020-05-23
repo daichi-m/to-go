@@ -199,6 +199,10 @@ func (cache *Caches) CacheStruct(gs *GoStruct) error {
 	return nil
 }
 
+// CacheName caches a name into the name cache. If the name already exists
+// it adds a number to its end (1 to 100) until it can find a unique name.
+// In the unlikely scenario all 100 numbers are used up, it will return
+// a NameClashError
 func (cache *Caches) CacheName(name string) string {
 	ex := cache.Exist(name)
 	if !ex {
