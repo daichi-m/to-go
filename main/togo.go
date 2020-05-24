@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	js := new(togo.Json)
+	js := new(togo.JSON)
 
 	logfile, err := os.Create("../logs/togo.log")
 	if err != nil {

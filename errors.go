@@ -20,5 +20,17 @@ type GenericCacheError struct {
 }
 
 func (c GenericCacheError) Error() string {
-	return fmt.Sprintf("Error while working with cache %s and element %s: %s", c.cacheName, c.element, c.message)
+	return fmt.Sprintf("Error while working with cache %s and element %s: %s",
+		c.cacheName, c.element, c.message)
+}
+
+// NameConflictError denotes the error thrown when a name is conflicting,
+// and new name cannot be created
+type NameConflictError struct {
+	name string
+}
+
+func (nce NameConflictError) Error() string {
+	return fmt.Sprintf("Name %s is already taken and cannot successfully create a new name",
+		nce.name)
 }
