@@ -188,12 +188,21 @@ func GetOrCreate() *Caches {
 
 // CacheStruct caches the struct represent by the GoStruct pointer into the
 // name and level caches.
-func (cache *Caches) CacheStruct(gs *GoStruct) error {
+func (cache *Caches) CacheStruct(gs *GoStruct, uniq bool) error {
 	name := gs.Name
 	cache.GoStructCache[name] = gs
 	err := cache.LevelCache.cache(gs)
 	if err != nil {
 		return err
+	}
+
+	if uniq {
+		_, err = cache.CacheName(name)
+		if err != nil {
+			return err
+		}
+	} else {
+		cache.CacheNameErrorFree(name)
 	}
 	cache.MaxLevel = int(math.Max(float64(cache.MaxLevel), float64(gs.Level)))
 	return nil
@@ -203,22 +212,33 @@ func (cache *Caches) CacheStruct(gs *GoStruct) error {
 // it adds a number to its end (1 to 100) until it can find a unique name.
 // In the unlikely scenario all 100 numbers are used up, it will return
 // a NameClashError
-func (cache *Caches) CacheName(name string) string {
+func (cache *Caches) CacheName(name string) (string, error) {
 	ex := cache.Exist(name)
 	if !ex {
 		cache.NameCache[name] = true
-		return name
+		return name, nil
 	}
 
-	i := 1
-	for i < 100 {
-		nm := name + "_" + string(i)
+	for i := 1; i < 10; i++ {
+		nm := fmt.Sprintf("%s_%d", name, i)
 		if !cache.Exist(nm) {
 			cache.NameCache[nm] = true
-			return nm
+			return nm, nil
 		}
 	}
-	return ""
+	return "", NameConflictError{
+		name: name,
+	}
+}
+
+// CacheNameErrorFree caches the name irrespective of a clash. If the name already exists,
+// this method just returns silently
+func (cache *Caches) CacheNameErrorFree(name string) {
+	ex := cache.Exist(name)
+	if ex {
+		return
+	}
+	cache.CacheName(name)
 }
 
 // Exist returns true if the name has already been used.
@@ -226,40 +246,3 @@ func (cache *Caches) Exist(name string) bool {
 	ex := cache.NameCache[name]
 	return ex
 }
-
-/*
-func (cache *Caches) CacheGoStruct(gs *GoStruct) error {
-    levelSlice, okLvl := cache.LevelCache[gs.Level]
-    if !okLvl {
-        levelSlice = make([]string, 1)
-        cache.LevelCache[gs.Level] = levelSlice
-    }
-	cachedGs, okGs := cache.GoStructCache[gs.Name]
-
-
-
-
-	levelSlice, ok1 := cache.LevelCache[gs.Level]
-
-    if !okLvl && levelSlice contains gs {
-        return NewCacheError("GoStructCache", gs.Name)
-    }
-
-	if !okLvl {
-		cache.GoStructCache[gsName] = gs
-		if !ok1 {
-			levelSlice = make([]*GoStruct, 1)
-		}
-		levelSlice = append(levelSlice, gs)
-		cache.LevelCache[gs.Level] = levelSlice
-		return nil
-	}
-
-	if cachedGs.Level == gs.Level {
-		cache.GoStructCache[gs.Name] = gs
-		return nil
-	} else {
-
-	}
-
-}*/

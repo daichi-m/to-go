@@ -16,3 +16,6 @@ vendor/
 
 # Logs folder
 logs/
+
+# VSCode directory
+.vscode

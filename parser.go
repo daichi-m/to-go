@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+
+	"go.uber.org/zap"
 )
 
 // A tracker interface to track the progression tree while converting to
@@ -24,12 +26,10 @@ func (t tracker) clone() tracker {
 	return tn
 }
 
-/*
 var LevelOrderCache map[int][]*GoStruct
 var NameStructCache map[string]*GoStruct
 var trackerCache map[string]*tracker
 var Logger *zap.Logger
-*/
 
 /*
 func setLogger() error {
