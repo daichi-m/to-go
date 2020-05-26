@@ -105,7 +105,7 @@ func HandleMap(src map[string]interface{}, tr tracker) (*GoStruct, error) {
 
 	log.Printf("Iterate and fill up fields on GoStruct %+v\n", gs.Name)
 	for key, val := range src {
-		field, err := toField(key, val)
+		field, err := ToField(key, val)
 		if err != nil {
 			log.Fatalf("Error while converting to Field: %+v\n", err)
 		}
@@ -175,7 +175,7 @@ func HandleSlice(src []interface{}, tr tracker) (*GoStruct, int, error) {
 	var chgs *GoStruct
 
 	for idx, val := range src {
-		field, err := toField(name, val)
+		field, err := ToField(name, val)
 		if err != nil {
 			log.Printf("Error while converting val to field: %+v\n", err)
 			return nil, 0, err
