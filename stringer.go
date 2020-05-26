@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// ToStruct converts the given instance of GoStruct into the actual go code for the struct.
 func (gs GoStruct) ToStruct() string {
 	var buf []string
 	buf = append(buf, fmt.Sprintf("type %s struct {", gs.Name))

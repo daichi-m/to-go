@@ -15,7 +15,7 @@ func search(haystack []string, needle string) bool {
 	return false
 }
 
-func Test_searchInLevel(t *testing.T) {
+func TestLevelCache_searchInLevel(t *testing.T) {
 
 	l := createLevelCache()
 	table := []struct {
@@ -32,14 +32,16 @@ func Test_searchInLevel(t *testing.T) {
 	}
 
 	for _, tb := range table {
-		res := l.searchInLevel(tb.level, tb.name)
-		if res != tb.result {
-			t.Errorf("TC: %s: Expected %v but found %v \n", tb.tc, tb.result, res)
-		}
+		t.Run(tb.tc, func(t *testing.T) {
+			res := l.searchInLevel(tb.level, tb.name)
+			if res != tb.result {
+				t.Errorf("TC: %s: Expected %v but found %v \n", tb.tc, tb.result, res)
+			}
+		})
 	}
 }
 
-func Test_findLevel(t *testing.T) {
+func TestLevelCache_findLevel(t *testing.T) {
 
 	l := createLevelCache()
 	table := []struct {
@@ -54,14 +56,16 @@ func Test_findLevel(t *testing.T) {
 	}
 
 	for _, tb := range table {
-		res := l.findLevel(tb.name)
-		if res != tb.level {
-			t.Errorf("TC: %s: Expected %v but found %v\n", tb.tc, tb.level, res)
-		}
+		t.Run(tb.tc, func(t *testing.T) {
+			res := l.findLevel(tb.name)
+			if res != tb.level {
+				t.Errorf("TC: %s: Expected %v but found %v\n", tb.tc, tb.level, res)
+			}
+		})
 	}
 }
 
-func Test_jump(t *testing.T) {
+func TestLevelCache_jump(t *testing.T) {
 
 	var l levelCache
 	verFunc := func(name string, abs, pres int) bool {
@@ -87,19 +91,21 @@ func Test_jump(t *testing.T) {
 	}
 
 	for _, tb := range table {
-		l = createLevelCache()
-		err := l.jump(tb.name, tb.src, tb.dest)
-		if err != nil && tb.isError != true {
-			t.Errorf("TC: %s, Found error %+v where it was not expected \n", tb.tc, err)
-		}
-		if !tb.verify() {
-			t.Errorf("TC: %s, Jump failed for %v\n", tb.tc, tb)
-			t.Errorf("Status of cache: %v\n", l.internalCache)
-		}
+		t.Run(tb.tc, func(t *testing.T) {
+			l = createLevelCache()
+			err := l.jump(tb.name, tb.src, tb.dest)
+			if err != nil && tb.isError != true {
+				t.Errorf("TC: %s, Found error %+v where it was not expected \n", tb.tc, err)
+			}
+			if !tb.verify() {
+				t.Errorf("TC: %s, Jump failed for %v\n", tb.tc, tb)
+				t.Errorf("Status of cache: %v\n", l.internalCache)
+			}
+		})
 	}
 }
 
-func Test_cache(t *testing.T) {
+func TestLevelCache_cache(t *testing.T) {
 	var l levelCache
 	dummyFields := make(map[string]*Field)
 
@@ -139,15 +145,17 @@ func Test_cache(t *testing.T) {
 	}
 
 	for _, tb := range cases {
-		l = createLevelCache()
-		l.cache(tb.gs)
-		if !tb.verify() {
-			t.Errorf("TC: %s: Error in caching %s", tb.tc, tb.gs.Name)
-		}
+		t.Run(tb.tc, func(t *testing.T) {
+			l = createLevelCache()
+			l.cache(tb.gs)
+			if !tb.verify() {
+				t.Errorf("TC: %s: Error in caching %s", tb.tc, tb.gs.Name)
+			}
+		})
 	}
 }
 
-func Test_iterate(t *testing.T) {
+func TestLevelCache_iterate(t *testing.T) {
 
 	l := createLevelCache()
 	iter := []LevelNames{
@@ -206,106 +214,93 @@ func TestCaches_CacheStruct(t *testing.T) {
 		},
 	}
 	for _, tc := range table {
-		_ = caches.CacheStruct(&tc.gs, tc.uniq)
-		if !verify(tc) {
-			t.Errorf("TC: %s: verification function failed", tc.tc)
-		}
+		t.Run(tc.tc, func(t *testing.T) {
+			_ = caches.CacheStruct(&tc.gs, tc.uniq)
+			if !verify(tc) {
+				t.Errorf("TC: %s: verification function failed", tc.tc)
+			}
+		})
 	}
 }
 
 func TestCaches_CacheName(t *testing.T) {
 
 	caches := createCaches()
+	setup := func(mp map[string]bool, nm string) {
+		for i := 1; i < 10; i++ {
+			name := fmt.Sprintf("%s_%d", nm, i)
+			mp[name] = true
+		}
+	}
+	setup(caches.NameCache, "Bar")
+
+	verify := func(name string) bool {
+		v, ok := caches.NameCache[name]
+		return ok == true && v == true
+	}
+
 	table := []struct {
-		tc      string
-		setup   func()
-		name    string
-		verify  func() bool
-		want    string
-		wantErr bool
+		tc          string
+		name        string
+		expected    string
+		expectError bool
 	}{
 		{
-			tc: "New Name",
-			setup: func() {
-				return
-			},
-			name: "Pickle",
-			verify: func() bool {
-				v, ok := caches.NameCache["Pickle"]
-				return ok == true && v == true
-			},
-			want:    "Pickle",
-			wantErr: false,
+			tc:          "New Name",
+			name:        "Pickle",
+			expected:    "Pickle",
+			expectError: false,
 		},
 		{
-			tc: "Existing Name",
-			setup: func() {
-				return
-			},
-			name: "Foo",
-			verify: func() bool {
-				v, ok := caches.NameCache["Foo_1"]
-				return ok == true && v == true
-			},
-			want:    "Foo_1",
-			wantErr: false,
+			tc:          "Existing Name",
+			name:        "Foo",
+			expected:    "Foo_1",
+			expectError: false,
 		},
 		{
-			tc: "Name Conflict Error",
-			setup: func() {
-				for i := 0; i < 10; i++ {
-					name := fmt.Sprintf("Foo_%d", i)
-					caches.NameCache[name] = true
-				}
-			},
-			name: "Foo",
-			verify: func() bool {
-				return true
-			},
-			want:    "",
-			wantErr: true,
+			tc:          "Name Conflict Error",
+			name:        "Bar",
+			expected:    "",
+			expectError: true,
 		},
 	}
 	for _, tc := range table {
-		tc.setup()
-		got, err := caches.CacheName(tc.name)
-		if !tc.verify() {
-			t.Errorf("TC: %s: verification function failed", tc.tc)
-		}
-		if got != tc.want && (!tc.wantErr && err != nil) {
-			t.Errorf("TC: %s: Expected %v but got %v instead", tc.tc, tc.want, got)
-		}
+		t.Run(tc.tc, func(t *testing.T) {
+			got, err := caches.CacheName(tc.name)
+			if err == nil && !verify(tc.expected) {
+				t.Errorf("TC: %s: verification function failed", tc.tc)
+			}
+			if got != tc.expected && (!tc.expectError && err != nil) {
+				t.Errorf("TC: %s: Expected %v but got %v instead", tc.tc, tc.expected, got)
+			}
+		})
 	}
 }
 
 func TestCaches_CacheNameErrorFree(t *testing.T) {
 	caches := createCaches()
+	verify := func(name string) bool {
+		v, ok := caches.NameCache[name]
+		return ok == true && v == true
+	}
+
 	table := []struct {
-		tc     string
-		name   string
-		verify func() bool
+		tc   string
+		name string
 	}{
 		{
 			tc:   "New Name",
 			name: "Pickle",
-			verify: func() bool {
-				v, ok := caches.NameCache["Pickle"]
-				return ok == true && v == true
-			},
 		},
 		{
 			tc:   "Existing Name",
 			name: "Foo",
-			verify: func() bool {
-				v, ok := caches.NameCache["Foo"]
-				return ok == true && v == true
-			},
 		},
 	}
 	for _, tb := range table {
 		t.Run(tb.name, func(t *testing.T) {
 			caches.CacheNameErrorFree(tb.name)
-			if !tb.verify() {
+			if !verify(tb.name) {
 				t.Errorf("TC: %s: verification function failed", tb.tc)
 			}
 		})
@@ -340,12 +335,55 @@ func TestCaches_Exist(t *testing.T) {
 		},
 	}
 	for _, tb := range table {
-		got := caches.Exist(tb.name)
-		if !tb.verify() {
-			t.Errorf("TC: %s: verification function failed", tb.tc)
-		}
-		if got != tb.want {
-			t.Errorf("TC: %s: Expected %v but got %v instead", tb.tc, tb.want, got)
-		}
+		t.Run(tb.tc, func(t *testing.T) {
+			got := caches.Exist(tb.name)
+			if !tb.verify() {
+				t.Errorf("TC: %s: verification function failed", tb.tc)
+			}
+			if got != tb.want {
+				t.Errorf("TC: %s: Expected %v but got %v instead", tb.tc, tb.want, got)
+			}
+		})
+	}
+}
+
+func TestGetOrCreate(t *testing.T) {
+
+	var retCache *Caches
+	tests := []struct {
+		tc     string
+		verify func(c *Caches) bool
+	}{
+		{
+			tc: "First Call",
+			verify: func(c *Caches) bool {
+				if len(c.GoStructCache) != 0 ||
+					len(c.NameCache) != 0 ||
+					len(c.LevelCache.internalCache) != 0 {
+					return false
+				}
+				return true
+			},
+		},
+		{
+			tc: "Subsequent Call",
+			verify: func(c *Caches) bool {
+				if c != retCache {
+					return false
+				}
+				return true
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.tc, func(t *testing.T) {
+			c := GetOrCreate()
+			if !tt.verify(c) {
+				t.Errorf("TC: %s: Verfication function failed", tt.tc)
+			}
+			if retCache == nil {
+				retCache = c
+			}
+		})
 	}
 }

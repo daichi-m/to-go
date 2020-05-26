@@ -66,7 +66,7 @@ func toFieldDT(k reflect.Kind) (FieldDT, bool) {
 		return Int, true
 	} else if k == reflect.Int64 {
 		return Int64, true
-	} else if k == reflect.Float64 {
+	} else if k == reflect.Float32 || k == reflect.Float64 {
 		return Float64, true
 	} else if k == reflect.String {
 		return String, true
@@ -77,7 +77,7 @@ func toFieldDT(k reflect.Kind) (FieldDT, bool) {
 	} else if k == reflect.Bool {
 		return Bool, true
 	} else {
-		return 0, false
+		return Initial, false
 	}
 }
 
@@ -110,8 +110,8 @@ func (f *Field) Equals(of *Field) bool {
 	return true
 }
 
-// Adds an annotation to the field
-func (f *Field) annotate(a string) {
+// Annotate adds an annotation to the field
+func (f *Field) Annotate(a string) {
 	if f.annotation == "" {
 		f.annotation = a
 	}
@@ -121,7 +121,16 @@ func (f *Field) annotate(a string) {
 	}
 }
 
-func toField(name string, val interface{}) (*Field, error) {
+// Clones a field. Visible for testing
+func (f *Field) clone() Field {
+	return Field{
+		f.name, f.annotation, f.dataType, f.dtStruct, f.sliceNesting,
+	}
+}
+
+// ToField converts the generic interface{} into a Field with the given name.
+// It throws an error in case the field creation is not successful due to some reason.
+func ToField(name string, val interface{}) (*Field, error) {
 	f := new(Field)
 	// TODO: To work on normalizing the name
 	f.name = name
@@ -146,6 +155,20 @@ type GoStruct struct {
 	Level  int
 }
 
+// Clone deep clones a GoStruct. Visible for testing
+func (gs GoStruct) clone() GoStruct {
+	ngs := GoStruct{
+		Name:   gs.Name,
+		Fields: make(map[string]*Field),
+		Level:  gs.Level,
+	}
+	for n, f := range gs.Fields {
+		nf := f.clone()
+		ngs.Fields[n] = &nf
+	}
+	return ngs
+}
+
 // AddField adds a field to the GoStruct instance
 func (gs *GoStruct) AddField(f *Field) error {
 	if f == nil {
@@ -165,7 +188,7 @@ func (gs *GoStruct) AddField(f *Field) error {
 		return fmt.Errorf(
 			"Unmatched fields. Already %v, received: %v", exFld, f)
 	}
-	f.annotate(exFld.annotation)
+	f.Annotate(exFld.annotation)
 	gs.Fields[f.name] = f
 	log.Printf("Added field %+v to the GoStruct %+v", f.name, gs.Name)
 	return nil
@@ -175,6 +198,9 @@ func (gs *GoStruct) AddField(f *Field) error {
 // Equality of GoStructs depends solely on name.
 // Fields can get added and deleted, so field equality is not checked
 func (gs *GoStruct) Equals(other *GoStruct) bool {
+	if other == nil {
+		return false
+	}
 	if gs.Name == other.Name {
 		return true
 	}

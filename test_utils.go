@@ -27,16 +27,19 @@ func createName() string {
 	return names[idx]
 }
 
-func createField(fdt FieldDT, strType string, nest int) Field {
-	name := createName()
+func createNamedField(name string, fdt FieldDT, strType string, nest int) Field {
 	field := Field{
 		name:         name,
-		annotation:   "`json:`" + name,
+		annotation:   "json:" + name,
 		dataType:     fdt,
 		dtStruct:     strType,
 		sliceNesting: nest,
 	}
 	return field
+}
+
+func createField(fdt FieldDT, strType string, nest int) Field {
+	return createNamedField(createName(), fdt, strType, nest)
 }
 
 func createPrimitiveField(fdt FieldDT) Field {
@@ -65,13 +68,21 @@ func creteSliceField(gs GoStruct, nest int) Field {
 
 func createSimpleGoStruct() GoStruct {
 	name := createName()
+	fieldNames := make([]string, 5)
+	for i := 0; i < 5; i++ {
+		fieldNames = append(fieldNames, createName())
+	}
+	return createNamedGoStruct(name, fieldNames...)
+}
+
+func createNamedGoStruct(name string, fields ...string) GoStruct {
 	gs := GoStruct{
 		Name:   name,
 		Fields: make(map[string]*Field),
 		Level:  1,
 	}
-	for i := 0; i < 5; i++ {
-		fld := createIntegerField()
+	for _, fn := range fields {
+		fld := createNamedField(fn, Int, "", 0)
 		gs.Fields[fld.name] = &fld
 	}
 	return gs
