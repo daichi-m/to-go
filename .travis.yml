@@ -1,0 +1,22 @@
+language: go
+
+go:
+  - "1.12.x"
+  - "1.13.x"
+  - "1.14.x"
+
+env: 
+  - GO111MODULE: "on"
+
+script:
+  - go test -covermode atomic -coverprofile coverage.txt .
+
+after_success:
+  - bash <(curl -k -s https://codecov.io/bash)
+
+branches:
+  only:
+  - gh-pages
+  - travis
+  - develop
+  - first-cut
