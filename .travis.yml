@@ -12,7 +12,7 @@ script:
   - go test -covermode atomic -coverprofile coverage.txt .
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - bash <(curl -k -s https://codecov.io/bash)
 
 branches:
   only:
