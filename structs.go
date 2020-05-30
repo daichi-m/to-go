@@ -1,7 +1,6 @@
 package togo
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"reflect"
@@ -137,7 +136,9 @@ func ToField(name string, val interface{}) (*Field, error) {
 	k := reflect.ValueOf(val).Kind()
 	dt, ok := toFieldDT(k)
 	if !ok {
-		return nil, errors.New("Failed to convert value to recognised field type")
+		return nil, UnsupportedType{
+			data: val,
+		}
 	}
 	f.dataType = dt
 	// TODO: Revisit this - need to fill up the annotation, slice nesting and dtstruct
@@ -172,7 +173,10 @@ func (gs GoStruct) clone() GoStruct {
 // AddField adds a field to the GoStruct instance
 func (gs *GoStruct) AddField(f *Field) error {
 	if f == nil {
-		return errors.New("Trying to add a nil field")
+		return GoStructError{
+			gs:      *gs,
+			message: "Attempt to add a nil Field",
+		}
 	}
 
 	if gs.Fields == nil {
@@ -185,8 +189,10 @@ func (gs *GoStruct) AddField(f *Field) error {
 	}
 
 	if !exFld.Equals(f) {
-		return fmt.Errorf(
-			"Unmatched fields. Already %v, received: %v", exFld, f)
+		return GoStructError{
+			gs:      *gs,
+			message: fmt.Sprintf("Unmatched Fields. Have %+v, received: %+v", exFld, f),
+		}
 	}
 	f.Annotate(exFld.annotation)
 	gs.Fields[f.name] = f
@@ -211,7 +217,10 @@ func (gs *GoStruct) Equals(other *GoStruct) bool {
 func (gs *GoStruct) Grow(other *GoStruct) error {
 	if eq := gs.Equals(other); !eq {
 		log.Printf("Structs %+v and %+v are not equal, cannot grow", gs, other)
-		return errors.New("The Structs are not equal. Cannot grow")
+		return GoStructError{
+			gs:      *gs,
+			message: fmt.Sprintf("Struct %s not equal, cannot Grow", other.Name),
+		}
 	}
 
 	for name, field := range other.Fields {
@@ -221,7 +230,10 @@ func (gs *GoStruct) Grow(other *GoStruct) error {
 			continue
 		}
 		if feq := gfield.Equals(field); !feq {
-			return errors.New("The field in GoStruct and the other does not match")
+			return GoStructError{
+				gs:      *gs,
+				message: fmt.Sprintf("Field %s does not equal, cannot Grow", gfield.name),
+			}
 		}
 	}
 	return nil

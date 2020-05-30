@@ -66,5 +66,5 @@ type GoStructError struct {
 }
 
 func (gse GoStructError) Error() string {
-	return fmt.Sprintf("Field %s errored due to %s", gse.gs.Name, gse.message)
+	return fmt.Sprintf("GoStruct %s errored due to %s", gse.gs.Name, gse.message)
 }
