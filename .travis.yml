@@ -6,7 +6,7 @@ go:
   - "1.13.x"
   - "1.14.x"
 
-env: 
+env:
   - GO111MODULE=on CODECOV_TOKEN=055ddb32-616a-4846-96fe-b68de18fa4bd
 
 script:
