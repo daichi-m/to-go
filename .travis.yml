@@ -1,22 +1,23 @@
 language: go
+dist: bionic
 
 go:
   - "1.12.x"
   - "1.13.x"
   - "1.14.x"
 
-env: 
-  - GO111MODULE: "on"
+env:
+  - GO111MODULE=on CODECOV_TOKEN=055ddb32-616a-4846-96fe-b68de18fa4bd
 
 script:
   - go test -covermode atomic -coverprofile coverage.txt .
 
 after_success:
-  - bash <(curl -k -s https://codecov.io/bash)
+  - bash <(curl -s https://codecov.io/bash)
 
 branches:
   only:
-  - gh-pages
-  - travis
-  - develop
-  - first-cut
+    - gh-pages
+    - travis
+    - develop
+    - first-cut
