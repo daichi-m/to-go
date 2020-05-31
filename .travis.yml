@@ -1,4 +1,5 @@
 language: go
+dist: trusty
 
 go:
   - "1.12.x"
@@ -12,7 +13,7 @@ script:
   - go test -covermode atomic -coverprofile coverage.txt .
 
 after_success:
-  - bash <(curl -k -s https://codecov.io/bash)
+  - bash <(curl -s https://codecov.io/bash)
 
 branches:
   only:
