@@ -116,28 +116,28 @@ func TestLevelCache_cache(t *testing.T) {
 	}{
 		{
 			tc: "Level 0 Struct",
-			gs: &GoStruct{Name: "Foo", Level: 0, Fields: dummyFields},
+			gs: &GoStruct{name: "Foo", level: 0, fields: dummyFields},
 			verify: func() bool {
 				return search(l.internalCache[0], "Foo")
 			},
 		},
 		{
 			tc: "Level 1 struct",
-			gs: &GoStruct{Name: "Foo", Level: 1, Fields: dummyFields},
+			gs: &GoStruct{name: "Foo", level: 1, fields: dummyFields},
 			verify: func() bool {
 				return search(l.internalCache[1], "Foo")
 			},
 		},
 		{
 			tc: "Level 0 Struct already in level 1",
-			gs: &GoStruct{Name: "World", Level: 0, Fields: dummyFields},
+			gs: &GoStruct{name: "World", level: 0, fields: dummyFields},
 			verify: func() bool {
 				return search(l.internalCache[1], "World")
 			},
 		},
 		{
 			tc: "New level 3 struct",
-			gs: &GoStruct{Name: "New", Level: 3, Fields: dummyFields},
+			gs: &GoStruct{name: "New", level: 3, fields: dummyFields},
 			verify: func() bool {
 				return search(l.internalCache[3], "New")
 			},
@@ -149,7 +149,7 @@ func TestLevelCache_cache(t *testing.T) {
 			l = createLevelCache()
 			l.cache(tb.gs)
 			if !tb.verify() {
-				t.Errorf("TC: %s: Error in caching %s", tb.tc, tb.gs.Name)
+				t.Errorf("TC: %s: Error in caching %s", tb.tc, tb.gs.name)
 			}
 		})
 	}
@@ -189,11 +189,11 @@ func TestCaches_CacheStruct(t *testing.T) {
 		uniq bool
 	}
 	verify := func(tc testCase) bool {
-		v, ok := caches.GoStructCache[tc.gs.Name]
-		if !ok || v.Name != tc.gs.Name {
+		v, ok := caches.GoStructCache[tc.gs.name]
+		if !ok || v.name != tc.gs.name {
 			return false
 		}
-		vx, ok := caches.NameCache[tc.gs.Name]
+		vx, ok := caches.NameCache[tc.gs.name]
 		if !ok || vx != true {
 			return false
 		}

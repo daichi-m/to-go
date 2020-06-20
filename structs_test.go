@@ -283,7 +283,7 @@ func TestGoStruct_AddField(t *testing.T) {
 	gs := createSimpleGoStruct()
 	field := createIntegerField()
 	field.name = "Foo"
-	gs.Fields["Foo"] = &field
+	gs.fields["Foo"] = &field
 
 	tests := []struct {
 		tc            string
@@ -299,7 +299,7 @@ func TestGoStruct_AddField(t *testing.T) {
 				return &fld
 			},
 			verify: func(gs *GoStruct) bool {
-				fld, ok := gs.Fields["NewField"]
+				fld, ok := gs.fields["NewField"]
 				if !ok {
 					return false
 				}
@@ -315,11 +315,11 @@ func TestGoStruct_AddField(t *testing.T) {
 		{
 			tc: "Existing Field",
 			fieldSupplier: func() *Field {
-				fld, _ := gs.Fields["Foo"]
+				fld, _ := gs.fields["Foo"]
 				return fld
 			},
 			verify: func(gs *GoStruct) bool {
-				fld := gs.Fields["Foo"]
+				fld := gs.fields["Foo"]
 				if fld.name != field.name ||
 					fld.annotation != field.annotation ||
 					fld.dataType != field.dataType {
@@ -385,8 +385,8 @@ func TestGoStruct_Equals(t *testing.T) {
 			tc: "Not Equal",
 			gsSupplier: func() *GoStruct {
 				gsl := createSimpleGoStruct()
-				if gs.Name == gsl.Name {
-					gsl.Name = "Random"
+				if gs.name == gsl.name {
+					gsl.name = "Random"
 				}
 				return &gsl
 			},
@@ -445,7 +445,7 @@ func TestGoStruct_Grow(t *testing.T) {
 			verify: func(gs *GoStruct) bool {
 				names := []string{"FooField", "BarField", "BazField"}
 				for _, n := range names {
-					fld, ok := gs.Fields[n]
+					fld, ok := gs.fields[n]
 					if !ok {
 						return false
 					}
@@ -472,7 +472,7 @@ func TestGoStruct_Grow(t *testing.T) {
 			verify: func(gs *GoStruct) bool {
 				names := []string{"FooField", "BarField", "BazField", "QuxField"}
 				for _, n := range names {
-					fld, ok := gs.Fields[n]
+					fld, ok := gs.fields[n]
 					if !ok {
 						return false
 					}
@@ -493,7 +493,7 @@ func TestGoStruct_Grow(t *testing.T) {
 			argGsSupplier: func(gs GoStruct) *GoStruct {
 				fld := createNamedField("FooField", String, "", 0)
 				ngs := gs.clone()
-				delete(ngs.Fields, "FooField")
+				delete(ngs.fields, "FooField")
 				ngs.AddField(&fld)
 				return &ngs
 			},
@@ -506,7 +506,7 @@ func TestGoStruct_Grow(t *testing.T) {
 			tc: "Empty Struct",
 			gsSupplier: func() *GoStruct {
 				gs := new(GoStruct)
-				gs.Name = "FooStruct"
+				gs.name = "FooStruct"
 				return gs
 			},
 			argGsSupplier: func(gs GoStruct) *GoStruct {
@@ -516,7 +516,7 @@ func TestGoStruct_Grow(t *testing.T) {
 			verify: func(gs *GoStruct) bool {
 				names := []string{"FooField", "BarField"}
 				for _, n := range names {
-					fld, ok := gs.Fields[n]
+					fld, ok := gs.fields[n]
 					if !ok {
 						return false
 					}
@@ -536,13 +536,13 @@ func TestGoStruct_Grow(t *testing.T) {
 			},
 			argGsSupplier: func(gs GoStruct) *GoStruct {
 				ngs := new(GoStruct)
-				ngs.Name = "FooStruct"
+				ngs.name = "FooStruct"
 				return ngs
 			},
 			verify: func(gs *GoStruct) bool {
 				names := []string{"FooField", "BarField"}
 				for _, n := range names {
-					fld, ok := gs.Fields[n]
+					fld, ok := gs.fields[n]
 					if !ok {
 						return false
 					}

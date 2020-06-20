@@ -151,21 +151,21 @@ func ToField(name string, val interface{}) (*Field, error) {
 // a set of Field types and a Level to determine at what level should the
 // struct be defined in the final source code.
 type GoStruct struct {
-	Name   string
-	Fields map[string]*Field
-	Level  int
+	name   string
+	fields map[string]*Field
+	level  int
 }
 
 // Clone deep clones a GoStruct. Visible for testing
 func (gs GoStruct) clone() GoStruct {
 	ngs := GoStruct{
-		Name:   gs.Name,
-		Fields: make(map[string]*Field),
-		Level:  gs.Level,
+		name:   gs.name,
+		fields: make(map[string]*Field),
+		level:  gs.level,
 	}
-	for n, f := range gs.Fields {
+	for n, f := range gs.fields {
 		nf := f.clone()
-		ngs.Fields[n] = &nf
+		ngs.fields[n] = &nf
 	}
 	return ngs
 }
@@ -179,12 +179,12 @@ func (gs *GoStruct) AddField(f *Field) error {
 		}
 	}
 
-	if gs.Fields == nil {
-		gs.Fields = make(map[string]*Field)
+	if gs.fields == nil {
+		gs.fields = make(map[string]*Field)
 	}
-	exFld, ok := gs.Fields[f.name]
+	exFld, ok := gs.fields[f.name]
 	if !ok {
-		gs.Fields[f.name] = f
+		gs.fields[f.name] = f
 		return nil
 	}
 
@@ -195,8 +195,8 @@ func (gs *GoStruct) AddField(f *Field) error {
 		}
 	}
 	f.Annotate(exFld.annotation)
-	gs.Fields[f.name] = f
-	log.Printf("Added field %+v to the GoStruct %+v", f.name, gs.Name)
+	gs.fields[f.name] = f
+	log.Printf("Added field %+v to the GoStruct %+v", f.name, gs.name)
 	return nil
 }
 
@@ -207,7 +207,7 @@ func (gs *GoStruct) Equals(other *GoStruct) bool {
 	if other == nil {
 		return false
 	}
-	if gs.Name == other.Name {
+	if gs.name == other.name {
 		return true
 	}
 	return false
@@ -219,12 +219,12 @@ func (gs *GoStruct) Grow(other *GoStruct) error {
 		log.Printf("Structs %+v and %+v are not equal, cannot grow", gs, other)
 		return GoStructError{
 			gs:      *gs,
-			message: fmt.Sprintf("Struct %s not equal, cannot Grow", other.Name),
+			message: fmt.Sprintf("Struct %s not equal, cannot Grow", other.name),
 		}
 	}
 
-	for name, field := range other.Fields {
-		gfield, ok := gs.Fields[name]
+	for name, field := range other.fields {
+		gfield, ok := gs.fields[name]
 		if !ok {
 			gs.AddField(field)
 			continue
@@ -242,7 +242,7 @@ func (gs *GoStruct) Grow(other *GoStruct) error {
 // IsEmpty checks if this GoStruct is empty
 // (i.e., this instance does not have a name)
 func (gs *GoStruct) IsEmpty() bool {
-	if len(gs.Name) == 0 {
+	if len(gs.name) == 0 {
 		return true
 	}
 	return false

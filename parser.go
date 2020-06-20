@@ -100,10 +100,10 @@ func HandleMap(src map[string]interface{}, tr tracker) (*GoStruct, error) {
 	trackerCache[tr.name] = &tr
 
 	gs := new(GoStruct)
-	gs.Name = tr.name
-	gs.Level = tr.level
+	gs.name = tr.name
+	gs.level = tr.level
 
-	log.Printf("Iterate and fill up fields on GoStruct %+v\n", gs.Name)
+	log.Printf("Iterate and fill up fields on GoStruct %+v\n", gs.name)
 	for key, val := range src {
 		field, err := ToField(key, val)
 		if err != nil {
@@ -129,7 +129,7 @@ func HandleMap(src map[string]interface{}, tr tracker) (*GoStruct, error) {
 				log.Printf("Failed converting map to GoStruct due to %+v \n", err)
 				return nil, err
 			}
-			field.dtStruct = cgs.Name
+			field.dtStruct = cgs.name
 			field.sliceNesting = -1
 			gs.AddField(field)
 		} else if field.dataType == Slice {
@@ -145,7 +145,7 @@ func HandleMap(src map[string]interface{}, tr tracker) (*GoStruct, error) {
 				log.Printf("Failed converting slice to GoStruct due to %+v \n", err)
 				return nil, err
 			}
-			field.dtStruct = cgs.Name
+			field.dtStruct = cgs.name
 			field.sliceNesting = nest
 			gs.AddField(field)
 		} else {
@@ -230,16 +230,16 @@ func HandleSlice(src []interface{}, tr tracker) (*GoStruct, int, error) {
 
 // Cache the GoStruct into level order cache and name cache
 func Cache(gs *GoStruct) error {
-	gsl, ok := LevelOrderCache[gs.Level]
+	gsl, ok := LevelOrderCache[gs.level]
 	if !ok {
 		gsl = make([]*GoStruct, 8)
 	}
 	gsl = append(gsl, gs)
-	LevelOrderCache[gs.Level] = gsl
+	LevelOrderCache[gs.level] = gsl
 
-	gsn, ok := NameStructCache[gs.Name]
+	gsn, ok := NameStructCache[gs.name]
 	if !ok {
-		NameStructCache[gs.Name] = gs
+		NameStructCache[gs.name] = gs
 		return nil
 	}
 	eq := gs.Equals(gsn)

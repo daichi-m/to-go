@@ -99,14 +99,14 @@ func (l levelCache) jump(name string, src, dest int) error {
 
 // Adds an instance of GoStruct to the levelCache
 func (l levelCache) cache(gs *GoStruct) error {
-	lvl := gs.Level
-	existLvl := l.findLevel(gs.Name)
+	lvl := gs.level
+	existLvl := l.findLevel(gs.name)
 
 	if existLvl == -1 {
 		lvlCache, ok := l.internalCache[lvl]
 		if !ok {
 			lvlCache = make([]string, 0, 10)
-			lvlCache = append(lvlCache, gs.Name)
+			lvlCache = append(lvlCache, gs.name)
 			l.internalCache[lvl] = lvlCache
 			l.maxLevel = int(math.Max(float64(l.maxLevel), float64(lvl)))
 			return nil
@@ -114,7 +114,7 @@ func (l levelCache) cache(gs *GoStruct) error {
 	} else if existLvl >= lvl {
 		l.maxLevel = int(math.Max(float64(l.maxLevel), float64(lvl)))
 	} else if existLvl < lvl {
-		err := l.jump(gs.Name, existLvl, lvl)
+		err := l.jump(gs.name, existLvl, lvl)
 		if err != nil {
 			return err
 		}
@@ -189,7 +189,7 @@ func GetOrCreate() *Caches {
 // CacheStruct caches the struct represent by the GoStruct pointer into the
 // name and level caches.
 func (cache *Caches) CacheStruct(gs *GoStruct, uniq bool) error {
-	name := gs.Name
+	name := gs.name
 	cache.GoStructCache[name] = gs
 	err := cache.LevelCache.cache(gs)
 	if err != nil {
@@ -204,7 +204,7 @@ func (cache *Caches) CacheStruct(gs *GoStruct, uniq bool) error {
 	} else {
 		cache.CacheNameErrorFree(name)
 	}
-	cache.MaxLevel = int(math.Max(float64(cache.MaxLevel), float64(gs.Level)))
+	cache.MaxLevel = int(math.Max(float64(cache.MaxLevel), float64(gs.level)))
 	return nil
 }
 

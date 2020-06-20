@@ -59,11 +59,11 @@ func createFloatField() Field {
 }
 
 func createMapField(gs GoStruct) Field {
-	return createField(Map, gs.Name, 0)
+	return createField(Map, gs.name, 0)
 }
 
 func creteSliceField(gs GoStruct, nest int) Field {
-	return createField(Slice, gs.Name, nest)
+	return createField(Slice, gs.name, nest)
 }
 
 func createSimpleGoStruct() GoStruct {
@@ -77,13 +77,13 @@ func createSimpleGoStruct() GoStruct {
 
 func createNamedGoStruct(name string, fields ...string) GoStruct {
 	gs := GoStruct{
-		Name:   name,
-		Fields: make(map[string]*Field),
-		Level:  1,
+		name:   name,
+		fields: make(map[string]*Field),
+		level:  1,
 	}
 	for _, fn := range fields {
 		fld := createNamedField(fn, Int, "", 0)
-		gs.Fields[fld.name] = &fld
+		gs.fields[fld.name] = &fld
 	}
 	return gs
 }
@@ -101,11 +101,11 @@ func createCaches() Caches {
 	}
 
 	for _, g := range gs {
-		caches.NameCache[g.Name] = true
-		caches.GoStructCache[g.Name] = &g
+		caches.NameCache[g.name] = true
+		caches.GoStructCache[g.name] = &g
 		caches.LevelCache.cache(&g)
-		if g.Level > caches.MaxLevel {
-			caches.MaxLevel = g.Level
+		if g.level > caches.MaxLevel {
+			caches.MaxLevel = g.level
 		}
 	}
 	return caches
