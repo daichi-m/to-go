@@ -21,3 +21,4 @@ branches:
     - travis
     - develop
     - first-cut
+    - test-80
