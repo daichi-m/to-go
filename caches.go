@@ -2,209 +2,305 @@ package togo
 
 import (
 	"fmt"
-	"math"
 	"sync"
 )
+
+type IntIntPair struct {
+	Left, Right int
+}
+
+// CacheIterator is an iterator to iterate over the values in a cache
+type CacheIterator interface {
+	// HasNext indicates if the iterator have a next element
+	HasNext() bool
+	// Next returns the next element of the iterator
+	Next() (interface{}, bool)
+	// Close ends the iterator
+	Close()
+}
 
 // LevelCache is a structure for level ordering of the structs.
 // It wraps around map[int][]string and exposes utility functions that
 // makes it easy for different operations.
-type levelCache struct {
-	internalCache map[int][]string
-	maxLevel      int
+type LevelCache struct {
+	levelToName map[int][]string
+	nameToLevel map[string]int
+	maxLevel    int
 }
 
-// Search a string inside the level. Returns the index at that level if found
-// or -1 if not found
-func (l levelCache) searchInLevel(lvl int, name string) int {
-	lvlCache, ok := l.internalCache[lvl]
-	if !ok {
-		return -1
-	}
-	for idx, s := range lvlCache {
-		if s == name {
-			return idx
-		}
-	}
-	return -1
+type levelCacheIterator struct {
+	LevelCache
+	current IntIntPair
+	active  bool
 }
 
-// Find the level of the name in the cache. Returns the level if found,
-// or -1 if not found
-func (l levelCache) findLevel(name string) int {
-	for lvl := range l.internalCache {
-		idx := l.searchInLevel(lvl, name)
-		if idx != -1 {
-			return lvl
-		}
+func (lci *levelCacheIterator) HasNext() bool {
+	if !lci.active {
+		return false
 	}
-	return -1
+
+	currLevel := lci.current.Left
+	if currLevel == -1 {
+		return true
+	}
+
+	if currLevel == lci.maxLevel {
+		ln := lci.levelToName[lci.maxLevel]
+		return lci.current.Right < (len(ln) - 1)
+	}
+	return true
 }
 
-// Jumps a name from src level to dest level. If the src and dest level
-// are same, then do nothing. If the jump is to the lower level, ignore the
-// jump in that case. Otherwise jump to a higher level.
-func (l levelCache) jump(name string, src, dest int) error {
+func (lci *levelCacheIterator) Next() (interface{}, bool) {
 
-	if src == dest {
-		if _, ok := l.internalCache[src]; !ok {
-			return GenericCacheError{
-				cacheName: "levelCache",
-				element:   name,
-				message: fmt.Sprintf("%s does not exist in cache for jump",
-					name),
-			}
-		}
-		return nil
+	if !lci.active {
+		return "", false
 	}
 
-	if src < dest {
-		srcSl, okSrc := l.internalCache[src]
-		destSl, okDest := l.internalCache[dest]
-
-		if !okSrc {
-			return GenericCacheError{
-				cacheName: "levelCache",
-				element:   name,
-				message: fmt.Sprintf("%s not present in level %d",
-					name, src),
-			}
-		}
-
-		if !okDest {
-			destSl = make([]string, 0, 10)
-		}
-		destSl = append(destSl, name)
-		l.internalCache[dest] = destSl
-
-		idx := l.searchInLevel(src, name)
-		if idx == -1 {
-			return GenericCacheError{
-				cacheName: "levelCache",
-				element:   name,
-				message: fmt.Sprintf("%s is not present in level %d",
-					name, src),
-			}
-		}
-		srcSl = append(srcSl[:idx], srcSl[idx+1:]...)
-		l.internalCache[src] = srcSl
+	currLevel := lci.current.Left
+	if currLevel == -1 {
+		lci.current.Left = 0
+		currLevel = 0
+	}
+	ln := lci.levelToName[currLevel]
+	if lci.current.Right < (len(ln) - 1) {
+		lci.current.Right++
+		x := ln[lci.current.Right]
+		return x, true
 	}
 
-	if src > dest {
-		return nil
+	currLevel++
+	ln, ok := lci.levelToName[currLevel]
+	for !ok || len(ln) == 0 {
+		currLevel++
+		if currLevel > lci.maxLevel {
+			break
+		}
+		ln, ok = lci.levelToName[currLevel]
+
 	}
 
-	return nil
+	if ok {
+		lci.current.Left = currLevel
+		x := ln[0]
+		lci.current.Right = 0
+		return x, true
+	}
+
+	return "", false
 }
 
-// Adds an instance of GoStruct to the levelCache
-func (l levelCache) cache(gs *GoStruct) error {
-	lvl := gs.level
-	existLvl := l.findLevel(gs.name)
-
-	if existLvl == -1 {
-		lvlCache, ok := l.internalCache[lvl]
-		if !ok {
-			lvlCache = make([]string, 0, 10)
-			lvlCache = append(lvlCache, gs.name)
-			l.internalCache[lvl] = lvlCache
-			l.maxLevel = int(math.Max(float64(l.maxLevel), float64(lvl)))
-			return nil
-		}
-	} else if existLvl >= lvl {
-		l.maxLevel = int(math.Max(float64(l.maxLevel), float64(lvl)))
-	} else if existLvl < lvl {
-		err := l.jump(gs.name, existLvl, lvl)
-		if err != nil {
-			return err
-		}
-		l.maxLevel = int(math.Max(float64(l.maxLevel), float64(lvl)))
-	}
-	return nil
+func (lci *levelCacheIterator) Close() {
+	lci.active = false
+	lci.current = IntIntPair{lci.maxLevel + 1, -1}
 }
 
 // LevelNames is the struct that is used to iterate over the level cache
 // in a level-order view.
 type LevelNames struct {
-	level int
-	name  string
+	Level int
+	Name  string
 }
 
-// Returns a slice of LevelNames in decreasing order of level so that
-// iteration is simpler over the levels.
-func (l levelCache) Iterate() []LevelNames {
-	var slc []LevelNames
-	max := l.maxLevel
-	slc = make([]LevelNames, 0, 10)
-	for level := max; level >= 0; level-- {
-		names := l.internalCache[level]
-		for _, n := range names {
-			ln := LevelNames{
-				level: level,
-				name:  n,
-			}
-			slc = append(slc, ln)
+// NewLevelCache creates a new instance of LevelCache
+func NewLevelCache() *LevelCache {
+	return &LevelCache{
+		levelToName: make(map[int][]string),
+		nameToLevel: make(map[string]int),
+		maxLevel:    -1,
+	}
+}
+
+func (lc *LevelCache) getNameSlice(level int) []string {
+	sl, ok := lc.levelToName[level]
+	if !ok {
+		sl = make([]string, 0, 10)
+		lc.levelToName[level] = sl
+	}
+	return sl
+}
+
+// Cache a (name, level) entry into the LevelCache
+func (lc *LevelCache) Cache(name string, level int) error {
+
+	srcLvl, ok := lc.nameToLevel[name]
+	if lc.maxLevel < level {
+		lc.maxLevel = level
+	}
+	if !ok {
+		// New data addition
+		nameSlc := lc.getNameSlice(level)
+		nameSlc = append(nameSlc, name)
+		lc.nameToLevel[name] = level
+		lc.levelToName[level] = nameSlc
+		return nil
+	}
+	return lc.Jump(name, srcLvl, level)
+}
+
+// DeCache removes a name from the level cache
+func (lc *LevelCache) DeCache(name string) {
+
+	lvl, ok := lc.nameToLevel[name]
+	if !ok {
+		return
+	}
+	slc, ok := lc.levelToName[lvl]
+	if !ok {
+		return
+	}
+	slc2 := make([]string, 0, len(slc)-1)
+	for _, s := range slc {
+		if s == name {
+			continue
+		}
+		slc2 = append(slc2, s)
+	}
+
+	if len(slc2) == 0 {
+		delete(lc.levelToName, lvl)
+	} else {
+		lc.levelToName[lvl] = slc2
+	}
+	delete(lc.nameToLevel, name)
+}
+
+// Jump moves a name from src level to dest level. If the src and dest level
+// are same, then do nothing. If the Jump is to the lower level, ignore the
+// jump in that case. Otherwise jump to a higher level.
+func (lc *LevelCache) Jump(name string, src, dest int) error {
+	lvl, ok := lc.nameToLevel[name]
+	if !ok {
+		return fmt.Errorf("Name %s not found in LevelCache", name)
+	}
+	if lvl != src {
+		return fmt.Errorf("Name %s not found at level %d", name, src)
+	}
+
+	if src >= dest {
+		return nil
+	}
+
+	lc.DeCache(name)
+	return lc.Cache(name, dest)
+}
+
+// Location gets the (level, index) of a name in the cache
+func (lc *LevelCache) Location(name string) (IntIntPair, bool) {
+	lvl, ok := lc.nameToLevel[name]
+	if !ok {
+		return IntIntPair{-1, -1}, false
+	}
+	slc := lc.levelToName[lvl]
+	for i, s := range slc {
+		if s == name {
+			return IntIntPair{lvl, i}, true
 		}
 	}
-	return slc
+	return IntIntPair{-1, -1}, false
 }
 
-// Caches structure for storing various data structures.
-type Caches struct {
-	NameCache     map[string]bool
-	GoStructCache map[string]*GoStruct
-	LevelCache    levelCache
-	MaxLevel      int
+// Iterator returns an CacheIterator for the LevelCache
+func (lc *LevelCache) Iterator() CacheIterator {
+	return &levelCacheIterator{
+		LevelCache: *lc,
+		current:    IntIntPair{-1, -1},
+		active:     true,
+	}
 }
 
-var instance *Caches
+// MaxLevel gets the maximum level the LevelCache has
+func (lc *LevelCache) MaxLevel() int {
+	return lc.maxLevel
+}
+
+// StructCache structure for storing various data structures.
+type StructCache struct {
+	nameCache  map[string]bool
+	igsCache   map[string]IGoStruct
+	levelCache *LevelCache
+	maxLevel   int
+}
+
+type structCacheIterator struct {
+	*StructCache
+	lci    CacheIterator
+	active bool
+}
+
+var _ CacheIterator = (*structCacheIterator)(nil)
+
+func (sci *structCacheIterator) HasNext() bool {
+	if !sci.active {
+		return false
+	}
+	return sci.lci.HasNext()
+}
+
+func (sci *structCacheIterator) Next() (interface{}, bool) {
+	if !sci.active {
+		return nil, false
+	}
+
+	ln, ok := sci.lci.Next()
+	if !ok {
+		return nil, false
+	}
+	gs, ok := sci.igsCache[ln.(string)]
+	if !ok {
+		return nil, false
+	}
+	return gs, true
+}
+
+func (sci *structCacheIterator) Close() {
+	sci.active = false
+	sci.lci.Close()
+}
+
+var instance *StructCache
 var lock sync.Mutex
 
-// GetOrCreate creates a new instance of Caches or gets the existing instance
+// GetOrCreateCaches creates a new instance of Caches or gets the existing instance
 // if it was already created.
-func GetOrCreate() *Caches {
+func GetOrCreateCaches() *StructCache {
 
 	if instance != nil {
 		return instance
 	}
 
-	if instance == nil {
-		lock.Lock()
-		defer lock.Unlock()
-		if instance == nil {
-			instance = &Caches{
-				NameCache:     make(map[string]bool),
-				GoStructCache: make(map[string]*GoStruct),
-				LevelCache: levelCache{
-					internalCache: make(map[int][]string),
-					maxLevel:      -1,
-				},
-				MaxLevel: -1,
-			}
-		}
+	instance = &StructCache{
+		nameCache:  make(map[string]bool),
+		igsCache:   make(map[string]IGoStruct),
+		levelCache: NewLevelCache(),
+		maxLevel:   -1,
 	}
 	return instance
 }
 
 // CacheStruct caches the struct represent by the GoStruct pointer into the
 // name and level caches.
-func (cache *Caches) CacheStruct(gs *GoStruct, uniq bool) error {
-	name := gs.name
-	cache.GoStructCache[name] = gs
-	err := cache.LevelCache.cache(gs)
-	if err != nil {
-		return err
-	}
-
+func (cache *StructCache) CacheStruct(gs IGoStruct, uniq bool) error {
+	name := gs.Name()
+	var err error
 	if uniq {
-		_, err = cache.CacheName(name)
+		name, err = cache.CacheName(name)
 		if err != nil {
 			return err
 		}
+		gs.ChangeName(name)
 	} else {
-		cache.CacheNameErrorFree(name)
+		cache.CacheNameWithConflict(name)
 	}
-	cache.MaxLevel = int(math.Max(float64(cache.MaxLevel), float64(gs.level)))
+
+	err = cache.levelCache.Cache(gs.Name(), gs.Level())
+	if err != nil {
+		return err
+	}
+	if gs.Level() > cache.maxLevel {
+		cache.maxLevel = gs.Level()
+	}
+	cache.igsCache[gs.Name()] = gs
 	return nil
 }
 
@@ -212,28 +308,26 @@ func (cache *Caches) CacheStruct(gs *GoStruct, uniq bool) error {
 // it adds a number to its end (1 to 100) until it can find a unique name.
 // In the unlikely scenario all 100 numbers are used up, it will return
 // a NameClashError
-func (cache *Caches) CacheName(name string) (string, error) {
+func (cache *StructCache) CacheName(name string) (string, error) {
 	ex := cache.Exist(name)
 	if !ex {
-		cache.NameCache[name] = true
+		cache.nameCache[name] = true
 		return name, nil
 	}
 
 	for i := 1; i < 10; i++ {
 		nm := fmt.Sprintf("%s_%d", name, i)
 		if !cache.Exist(nm) {
-			cache.NameCache[nm] = true
+			cache.nameCache[nm] = true
 			return nm, nil
 		}
 	}
-	return "", NameConflictError{
-		name: name,
-	}
+	return "", fmt.Errorf("NameConflict: Cannot find suitable alternative for %s", name)
 }
 
-// CacheNameErrorFree caches the name irrespective of a clash. If the name already exists,
+// CacheNameWithConflict caches the name irrespective of a clash. If the name already exists,
 // this method just returns silently
-func (cache *Caches) CacheNameErrorFree(name string) {
+func (cache *StructCache) CacheNameWithConflict(name string) {
 	ex := cache.Exist(name)
 	if ex {
 		return
@@ -242,7 +336,21 @@ func (cache *Caches) CacheNameErrorFree(name string) {
 }
 
 // Exist returns true if the name has already been used.
-func (cache *Caches) Exist(name string) bool {
-	ex := cache.NameCache[name]
+func (cache *StructCache) Exist(name string) bool {
+	ex := cache.nameCache[name]
 	return ex
+}
+
+// MaxLevel returns the max level in the Caches
+func (cache *StructCache) MaxLevel() int {
+	return cache.maxLevel
+}
+
+// Iterator returns a CacheIterator to iterate over the cache
+func (cache *StructCache) Iterator() CacheIterator {
+	return &structCacheIterator{
+		StructCache: cache,
+		lci:         cache.levelCache.Iterator(),
+		active:      true,
+	}
 }

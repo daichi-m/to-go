@@ -1,0 +1,56 @@
+2020-06-24T21:35:39.228+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc00011a1c0}
+2020-06-24T21:35:39.243+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc00011a300}
+2020-06-24T21:35:39.259+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc00011a380}
+2020-06-24T21:35:39.274+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc00011a400}
+2020-06-24T21:35:39.291+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Fry
+2020-06-24T21:35:53.714+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000d8880}
+2020-06-24T21:35:53.733+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000d89c0}
+2020-06-24T21:35:53.746+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000260c0}
+2020-06-24T21:35:53.762+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000261c0}
+2020-06-24T21:36:02.921+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000126180}
+2020-06-24T21:36:02.935+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001262c0}
+2020-06-24T21:36:02.946+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000126340}
+2020-06-24T21:36:02.956+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001263c0}
+2020-06-24T21:36:02.982+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Fry
+2020-06-24T21:37:35.396+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Bar
+2020-06-24T21:47:11.715+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000fe2c0}
+2020-06-24T21:47:11.740+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000fe400}
+2020-06-24T21:47:11.773+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000fe480}
+2020-06-24T21:47:11.804+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000fe500}
+2020-06-24T21:47:11.841+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Fry
+2020-06-24T21:47:18.129+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Bar
+2020-06-24T21:47:27.897+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000fe240}
+2020-06-24T21:47:27.913+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000fe380}
+2020-06-24T21:47:27.925+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000fe400}
+2020-06-24T21:47:27.936+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0000fe480}
+2020-06-24T21:47:27.955+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Fry
+2020-06-24T21:48:18.563+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001281c0}
+2020-06-24T21:48:18.580+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000128300}
+2020-06-24T21:48:18.592+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000128380}
+2020-06-24T21:48:18.608+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000128400}
+2020-06-24T21:48:18.623+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Fry
+2020-06-24T21:48:18.639+0530	DEBUG	togo/structs.go:417	Structs FooStruct and BarStruct are not equal, cannot grow
+2020-06-24T21:50:29.860+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000138180}
+2020-06-24T21:50:29.873+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001382c0}
+2020-06-24T21:50:29.898+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000138340}
+2020-06-24T21:50:29.915+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001383c0}
+2020-06-24T21:50:29.947+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Fry
+2020-06-24T21:50:29.963+0530	DEBUG	togo/structs.go:417	Structs FooStruct and BarStruct are not equal, cannot grow
+2020-06-24T21:51:15.689+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001281c0}
+2020-06-24T21:51:15.706+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000128300}
+2020-06-24T21:51:15.717+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000128380}
+2020-06-24T21:51:15.733+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000128400}
+2020-06-24T21:51:15.749+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Fry
+2020-06-24T21:51:15.769+0530	DEBUG	togo/structs.go:417	Structs FooStruct and BarStruct are not equal, cannot grow
+2020-06-24T21:51:16.952+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000126180}
+2020-06-24T21:51:16.965+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001262c0}
+2020-06-24T21:51:16.981+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000126340}
+2020-06-24T21:51:16.992+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001263c0}
+2020-06-24T21:51:17.004+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Fry
+2020-06-24T21:51:17.030+0530	DEBUG	togo/structs.go:417	Structs FooStruct and BarStruct are not equal, cannot grow
+2020-06-25T09:16:01.393+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000104280}
+2020-06-25T09:16:01.412+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001043c0}
+2020-06-25T09:16:01.430+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc000104440}
+2020-06-25T09:16:01.444+0530	DEBUG	togo/structs.go:267	Field created{field 23 0  0xc0001044c0}
+2020-06-25T09:16:01.475+0530	DEBUG	togo/structs.go:381	Added field Foo to the GoStruct Fry
+2020-06-25T09:16:01.515+0530	DEBUG	togo/structs.go:417	Structs FooStruct and BarStruct are not equal, cannot grow

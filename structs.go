@@ -2,7 +2,6 @@ package togo
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 )
@@ -28,7 +27,8 @@ const (
 	Map
 )
 
-func (f FieldDT) primitive() bool {
+// Primitive checks if an instance of FieldDT is a primitive type
+func (f FieldDT) Primitive() bool {
 	switch f {
 	case Int, Bool, Int64, Float64, String:
 		return true
@@ -37,7 +37,7 @@ func (f FieldDT) primitive() bool {
 	}
 }
 
-func (f FieldDT) str() string {
+func (f FieldDT) String() string {
 	switch f {
 	case Initial:
 		return "Initial"
@@ -60,7 +60,18 @@ func (f FieldDT) str() string {
 	}
 }
 
-func toFieldDT(k reflect.Kind) (FieldDT, bool) {
+func (f FieldDT) GoString() string {
+	return fmt.Sprintf("FieldDT: %s", f.String())
+}
+
+// NewFieldDT converts any instance of interface{} type to FieldDT
+func NewFieldDT(val interface{}) (FieldDT, bool) {
+	k := reflect.ValueOf(val).Kind()
+	return fieldDT(k)
+}
+
+// fieldDT is the private method to convert a reflect.Kind into FieldDT
+func fieldDT(k reflect.Kind) (FieldDT, bool) {
 	if k == reflect.Int {
 		return Int, true
 	} else if k == reflect.Int64 {
@@ -80,170 +91,349 @@ func toFieldDT(k reflect.Kind) (FieldDT, bool) {
 	}
 }
 
+/*
+// Cloner interface defines a clone method that can create a cloned copy of itself
+type Cloner interface {
+	Clone() (Cloner, error)
+}
+
+// Grower interface grows the object to accomodate further changes from another Grower
+type Grower interface {
+	Grow(other Grower) (Grower, error)
+}
+
+type Equaler interface {
+	Equals(other Equaler) bool
+}*/
+
+// IField is a cover interface for a Field in a GoStruct.
+type IField interface {
+	fmt.Stringer
+	fmt.GoStringer
+
+	Clone() IField
+	Grow(other IField) (IField, error)
+	Equals(other IField) bool
+	Name() string
+
+	/*
+		// Getters for IField
+
+		Annotation() string
+		DataType() FieldDT
+		DTStruct() string
+		SliceNesting() int
+
+		// Setters for IField
+		SetName(name string) IField
+		SetAnnotation(annotation string) IField
+		SetDataType(dt FieldDT) IField
+
+	*/
+}
+
+// IFieldMaker is a factory interface for IField
+type IFieldMaker interface {
+	MakeIField(name string, annotation string, dataType FieldDT,
+		dts string, nest int) IField
+}
+
+// FieldMaker is a IFieldMaker for the *Field type
+type FieldMaker struct{}
+
+var _ IFieldMaker = FieldMaker{}
+
 // Field is the struct that donates a go Field inside the go struct that will
 // be generated. It has a Name, a Type and optionally an
 // Annotation to user for (un)marshalling
 type Field struct {
-	name         string
-	annotation   string
-	dataType     FieldDT
-	dtStruct     string
-	sliceNesting int
+	FieldName    string
+	Annotation   string
+	DataType     FieldDT
+	DTStruct     string
+	SliceNesting int
+}
+
+var _ IField = (*Field)(nil)
+
+// Name returns the name of the field
+func (f *Field) Name() string {
+	return f.FieldName
+}
+
+func (f *Field) String() string {
+
+	nest := strings.Builder{}
+	if f.SliceNesting > 0 {
+		nest.WriteString("[]")
+	}
+
+	if f.DataType.Primitive() {
+		return fmt.Sprintf("%s\t %s %s\t `%s`",
+			f.FieldName, nest.String(), f.DataType.String(), f.Annotation)
+	}
+	return fmt.Sprintf("%s\t %s %s\t `%s`",
+		f.FieldName, nest.String(), f.DTStruct, f.Annotation)
+}
+
+func (f *Field) GoString() string {
+	return fmt.Sprintf("Field: %s", f.String())
 }
 
 // Equals check if this instance of field is "in-principle"
 // equal to other instance
-func (f *Field) Equals(of *Field) bool {
-	if f.name != of.name {
+func (f *Field) Equals(eq IField) bool {
+
+	of, ok := eq.(*Field)
+	if !ok {
 		return false
 	}
-	if f.dataType != of.dataType {
+
+	if f.FieldName != of.FieldName {
 		return false
 	}
-	if f.dtStruct != of.dtStruct {
+	if f.DataType != of.DataType {
 		return false
 	}
-	if f.sliceNesting != of.sliceNesting {
+	if f.DTStruct != of.DTStruct {
+		return false
+	}
+	if f.SliceNesting != of.SliceNesting {
 		return false
 	}
 	return true
 }
 
-// Annotate adds an annotation to the field
-func (f *Field) Annotate(a string) {
-	if f.annotation == "" {
-		f.annotation = a
-	}
-
-	if !strings.Contains(f.annotation, a) {
-		f.annotation = fmt.Sprintf("%s,%s", f.annotation, a)
-	}
-}
-
-// Clones a field. Visible for testing
-func (f *Field) clone() Field {
-	return Field{
-		f.name, f.annotation, f.dataType, f.dtStruct, f.sliceNesting,
-	}
-}
-
-// ToField converts the generic interface{} into a Field with the given name.
-// It throws an error in case the field creation is not successful due to some reason.
-func ToField(name string, val interface{}) (*Field, error) {
-	f := new(Field)
-	// TODO: To work on normalizing the name
-	f.name = name
-	k := reflect.ValueOf(val).Kind()
-	dt, ok := toFieldDT(k)
+// Grow adds annotation from the second IField into this Field
+func (f *Field) Grow(oif IField) (IField, error) {
+	other, ok := oif.(*Field)
 	if !ok {
-		return nil, UnsupportedType{
-			data: val,
-		}
+		return nil, fmt.Errorf("Cannot grow from an non IField type")
 	}
-	f.dataType = dt
-	// TODO: Revisit this - need to fill up the annotation, slice nesting and dtstruct
-	f.annotation = ""
-	log.Printf("Field created: %+v \n", f)
+
+	if len(f.Annotation) == 0 {
+		f.Annotation = other.Annotation
+	}
+
+	if !strings.Contains(f.Annotation, other.Annotation) {
+		f.Annotation = fmt.Sprintf("%s,%s", f.Annotation, other.Annotation)
+	}
 	return f, nil
+}
+
+// Clone a Field into another Field object
+func (f *Field) Clone() IField {
+	of := Field{
+		FieldName:    f.FieldName,
+		Annotation:   f.Annotation,
+		DataType:     f.DataType,
+		DTStruct:     f.DTStruct,
+		SliceNesting: f.SliceNesting,
+	}
+	return &of
+}
+
+// MakeIField converts the generic interface{} into a IField with the given name.
+// It throws an error in case the field creation is not successful due to some reason.
+func (fm FieldMaker) MakeIField(name string, annotation string, dataType FieldDT,
+	dts string, nest int) IField {
+
+	f := Field{
+		FieldName:    name,
+		Annotation:   annotation,
+		DataType:     dataType,
+		DTStruct:     dts,
+		SliceNesting: nest,
+	}
+	return &f
+}
+
+// IGoStruct is a cover interface for a GoStruct
+type IGoStruct interface {
+	fmt.Stringer
+	fmt.GoStringer
+
+	Clone() IGoStruct
+	Grow(other IGoStruct) (IGoStruct, error)
+	Equals(other IGoStruct) bool
+	AddField(field IField) (IGoStruct, error)
+	Name() string
+	Level() int
+	ChangeName(string)
+
+	// Name() string
+	// Fields() []IField
+	// Level() int
+
+	// SetName(name string) IGoStruct
+	// SetFields(fields []IField) IGoStruct
+	// SetLevel(level int) IGoStruct
+
 }
 
 // GoStruct is the representation of a go struct. It has a name,
 // a set of Field types and a Level to determine at what level should the
 // struct be defined in the final source code.
 type GoStruct struct {
-	name   string
-	fields map[string]*Field
-	level  int
+	StructName  string
+	Fields      map[string]IField
+	StructLevel int
+}
+
+var _ IGoStruct = (*GoStruct)(nil)
+
+// Name returns the name of the GoStruct
+func (gs *GoStruct) Name() string {
+	return gs.StructName
+}
+
+// Level returns the level of the GoStruct
+func (gs *GoStruct) Level() int {
+	return gs.StructLevel
+}
+
+// ChangeName changes the name of the GoStruct
+func (gs *GoStruct) ChangeName(name string) {
+	gs.StructName = name
+}
+
+func (gs *GoStruct) String() string {
+	sb := new(strings.Builder)
+	sb.WriteString(fmt.Sprintf("type %s struct", gs.StructName))
+	for _, f := range gs.Fields {
+		sb.WriteString(fmt.Sprintf("\n \t %s", f.String()))
+	}
+	sb.WriteString(fmt.Sprintf("\n At Level %d", gs.StructLevel))
+	return sb.String()
+}
+
+func (gs *GoStruct) GoString() string {
+	return gs.String()
 }
 
 // Clone deep clones a GoStruct. Visible for testing
-func (gs GoStruct) clone() GoStruct {
+func (gs *GoStruct) Clone() IGoStruct {
 	ngs := GoStruct{
-		name:   gs.name,
-		fields: make(map[string]*Field),
-		level:  gs.level,
+		StructName:  gs.StructName,
+		Fields:      make(map[string]IField),
+		StructLevel: gs.StructLevel,
 	}
-	for n, f := range gs.fields {
-		nf := f.clone()
-		ngs.fields[n] = &nf
+	for n, f := range gs.Fields {
+		ngs.Fields[n] = f.Clone()
 	}
-	return ngs
+	return &ngs
 }
 
 // AddField adds a field to the GoStruct instance
-func (gs *GoStruct) AddField(f *Field) error {
-	if f == nil {
-		return GoStructError{
-			gs:      *gs,
-			message: "Attempt to add a nil Field",
-		}
+func (gs *GoStruct) AddField(ifl IField) (IGoStruct, error) {
+	f := ifl.(*Field)
+	logger := getLogger().Sugar()
+	defer logger.Sync()
+
+	if reflect.ValueOf(f).IsNil() {
+		return nil, fmt.Errorf("Cannot add a nil field")
 	}
 
-	if gs.fields == nil {
-		gs.fields = make(map[string]*Field)
+	if gs.Fields == nil {
+		gs.Fields = make(map[string]IField)
 	}
-	exFld, ok := gs.fields[f.name]
+	exFld, ok := gs.Fields[f.FieldName]
 	if !ok {
-		gs.fields[f.name] = f
-		return nil
+		gs.Fields[f.FieldName] = f
+		return gs, nil
 	}
 
 	if !exFld.Equals(f) {
-		return GoStructError{
-			gs:      *gs,
-			message: fmt.Sprintf("Unmatched Fields. Have %+v, received: %+v", exFld, f),
-		}
+		return nil, fmt.Errorf("Unmatched field, expected %v, found %v", exFld, f)
 	}
-	f.Annotate(exFld.annotation)
-	gs.fields[f.name] = f
-	log.Printf("Added field %+v to the GoStruct %+v", f.name, gs.name)
-	return nil
+	f.Grow(exFld)
+	gs.Fields[f.FieldName] = f
+	logger.Debugf("Added field %s to the GoStruct %s", f.FieldName, gs.StructName)
+	return gs, nil
 }
 
 // Equals check if two GoStruct instances are equal.
 // Equality of GoStructs depends solely on name.
 // Fields can get added and deleted, so field equality is not checked
-func (gs *GoStruct) Equals(other *GoStruct) bool {
-	if other == nil {
+func (gs *GoStruct) Equals(igs IGoStruct) bool {
+
+	if reflect.ValueOf(igs).IsNil() {
 		return false
 	}
-	if gs.name == other.name {
+	other, ok := igs.(*GoStruct)
+	if !ok {
+		return false
+	}
+	if gs.StructName == other.StructName {
 		return true
 	}
 	return false
 }
 
 // Grow a struct with additional fields from the other GoStruct instance
-func (gs *GoStruct) Grow(other *GoStruct) error {
-	if eq := gs.Equals(other); !eq {
-		log.Printf("Structs %+v and %+v are not equal, cannot grow", gs, other)
-		return GoStructError{
-			gs:      *gs,
-			message: fmt.Sprintf("Struct %s not equal, cannot Grow", other.name),
-		}
+func (gs *GoStruct) Grow(og IGoStruct) (IGoStruct, error) {
+
+	logger := getLogger().Sugar()
+	defer logger.Sync()
+
+	var other *GoStruct
+	var ok bool
+
+	if other, ok = og.(*GoStruct); !ok {
+		return nil, fmt.Errorf("GoStruct: Cannot grow from different object")
 	}
 
-	for name, field := range other.fields {
-		gfield, ok := gs.fields[name]
+	if eq := gs.Equals(other); !eq {
+		logger.Debugf("Structs %s and %s are not equal, cannot grow", gs.StructName, other.StructName)
+		return nil, fmt.Errorf("GoStruct %s is not equal, cannot grow", other.StructName)
+	}
+
+	for name, field := range other.Fields {
+		gfield, ok := gs.Fields[name]
 		if !ok {
 			gs.AddField(field)
 			continue
 		}
 		if feq := gfield.Equals(field); !feq {
-			return GoStructError{
-				gs:      *gs,
-				message: fmt.Sprintf("Field %s does not equal, cannot Grow", gfield.name),
-			}
+			return nil, fmt.Errorf("Field %s and %s are not equal, cannot grow",
+				field, gfield)
 		}
 	}
-	return nil
+	return gs, nil
 }
 
 // IsEmpty checks if this GoStruct is empty
 // (i.e., this instance does not have a name)
-func (gs *GoStruct) IsEmpty() bool {
+/*
+func (gs *GoStruct) isEmpty() bool {
 	if len(gs.name) == 0 {
 		return true
 	}
 	return false
+}*/
+
+// IGoStructMaker is a factory interface for IGoStruct
+type IGoStructMaker interface {
+	MakeGoStruct(name string, fields []IField, level int) IGoStruct
+}
+
+// GoStructMaker is a IGoStructMaker for the *GoStruct type
+type GoStructMaker struct{}
+
+var _ IGoStructMaker = GoStructMaker{}
+
+// MakeGoStruct makes an instance of GoStruct from the corresponding name, fields and level values
+func (gsm GoStructMaker) MakeGoStruct(name string, fields []IField, level int) IGoStruct {
+	gs := GoStruct{
+		StructName:  name,
+		StructLevel: level,
+		Fields:      make(map[string]IField),
+	}
+	if fields != nil {
+		for _, f := range fields {
+			f2 := f.(*Field)
+			gs.Fields[f2.FieldName] = f2
+		}
+	}
+	return &gs
 }

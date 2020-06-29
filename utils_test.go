@@ -1,5 +1,6 @@
 package togo
 
+/*
 import (
 	"math/rand"
 )
@@ -78,7 +79,7 @@ func createSimpleGoStruct() GoStruct {
 func createNamedGoStruct(name string, fields ...string) GoStruct {
 	gs := GoStruct{
 		name:   name,
-		fields: make(map[string]*Field),
+		fields: make(map[string]IField),
 		level:  1,
 	}
 	for _, fn := range fields {
@@ -110,3 +111,4 @@ func createCaches() Caches {
 	}
 	return caches
 }
+*/

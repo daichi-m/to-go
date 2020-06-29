@@ -1,10 +1,6 @@
 package togo
 
-import (
-	"fmt"
-	"strings"
-)
-
+/*
 // ToStruct converts the given instance of GoStruct into the actual go code for the struct.
 func (gs GoStruct) ToStruct() string {
 	var buf []string
@@ -34,3 +30,4 @@ func (gs GoStruct) ToStruct() string {
 	buf = append(buf, "}")
 	return strings.Join(buf, "\n")
 }
+*/
